@@ -33,6 +33,9 @@ export const metadata: Metadata = {
     title: "De Aquí y De Allá",
   },
   formatDetection: { telephone: false },
+};
+
+export const viewport = {
   themeColor: "#8B0000",
 };
 
