@@ -1,4 +1,5 @@
 import { AppThemeProvider } from "@/components/providers/app-theme-provider";
+import { PWAProvider } from "@/components/providers/pwa-provider";
 import { RESTAURANT_BRAND_NAME } from "@/lib/brand";
 import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
@@ -26,13 +27,17 @@ export const metadata: Metadata = {
   ),
   title: RESTAURANT_BRAND_NAME,
   description: `Restaurante ${RESTAURANT_BRAND_NAME} — cocina china y latina en Granada.`,
-  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "De Aquí y De Allá",
+    // startupImage: "/images/logo.png", // Podría añadirse si se tiene una imagen de splash
   },
   formatDetection: { telephone: false },
+  icons: {
+    icon: "/images/logo.png",
+    apple: "/images/logo.png",
+  },
 };
 
 export const viewport = {
@@ -59,7 +64,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
         className="min-h-full bg-background font-sans text-foreground antialiased"
         suppressHydrationWarning
       >
-        <AppThemeProvider>{children}</AppThemeProvider>
+        <AppThemeProvider>
+          <PWAProvider />
+          {children}
+        </AppThemeProvider>
       </body>
     </html>
   );
