@@ -5,6 +5,8 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { formatCentsToCurrency } from "@/lib/money";
 import { LoggerService } from "@/lib/logger";
 import { BarChart3, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
 import type { Ingredient } from "./inventory-dashboard";
 
 interface OrderLine {

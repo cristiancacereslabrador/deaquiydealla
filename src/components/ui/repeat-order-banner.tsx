@@ -6,10 +6,10 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { RefreshCw, ArrowRight } from "lucide-react";
-import type { CartItem } from "@/stores/cart-store";
+import type { CartLineInput } from "@/lib/schemas/cart-schemas";
 
 export function RepeatOrderBanner() {
-  const [lastOrder, setLastOrder] = useState<CartItem[] | null>(null);
+  const [lastOrder, setLastOrder] = useState<CartLineInput[] | null>(null);
   const addItems = useCartStore(s => s.addItem);
   const clearCart = useCartStore(s => s.clearCart);
   const router = useRouter();
