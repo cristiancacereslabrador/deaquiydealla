@@ -1,0 +1,84 @@
+================================================================================
+  DE AQUÍ Y DE ALLÁ — PWA RESTAURANTE (Next.js + Supabase + Zustand + i18n)
+  Archivo: PROGRESO.TXT (bitácora de alcance y tiempos)
+================================================================================
+
+--------------------------------------------------------------------------------
+FASE 1 — Setup y Supabase
+--------------------------------------------------------------------------------
+Hecho:
+  - Next.js 16 App Router, TypeScript, Tailwind, src/.
+  - Dependencias: @supabase/supabase-js, @supabase/ssr, zustand, next-themes,
+    next-intl, zod, react-hook-form, @hookform/resolvers.
+  - Shadcn UI (init).
+  - Cliente Supabase: src/lib/supabase/client.ts, server.ts.
+  - .env.example con URL y anon key.
+
+--------------------------------------------------------------------------------
+FASE 2 — UI, layout, tema, i18n
+--------------------------------------------------------------------------------
+Hecho:
+  - next-intl: rutas [locale], es por defecto, en con prefijo.
+  - next-themes, paleta restaurante (rojo/dorado), fuentes DM Sans + Cormorant.
+  - Cabecera / pie, selector idioma y tema simplificados a toggles de un clic.
+  - Marca: "De Aquí y De Allá". Dev server en 127.0.0.1:3686.
+
+--------------------------------------------------------------------------------
+FASE 3 — Catálogo, Zustand, carrito
+--------------------------------------------------------------------------------
+Hecho:
+  - Catálogo DISHES sincronizado exactamente con Glovo (14 platos, nombres y
+    descripciones reales del restaurante).
+  - Imágenes de todos los platos descargadas localmente en /public/images/dishes/
+    para evitar bloqueos de dominios externos y crashes de Turbopack.
+  - Bug crítico corregido: Zod usaba z.string().url() en el schema del carrito,
+    rechazando rutas relativas (/images/...) y bloqueando silenciosamente todas
+    las adiciones al carrito.
+  - Zustand + persist localStorage; validación con Zod.
+  - Páginas /menu y /cart; contador en cabecera; total en carrito.
+  - DishCard con alturas uniformes (h-full) para layout consistente.
+
+--------------------------------------------------------------------------------
+FASE 4 — Checkout y base de datos (Supabase)
+--------------------------------------------------------------------------------
+Hecho:
+  - SQL: 001_pedidos.sql y 002_admin_setup.sql ejecutados en producción.
+  - Bug crítico corregido: NEXT_PUBLIC_SUPABASE_URL tenía /rest/v1/ al final,
+    causando error "Invalid path specified in request URL".
+  - Server action submit-pickup-order.ts con insert a Supabase funcional.
+  - UI Checkout con react-hook-form + Zod.
+  - Página de éxito mejorada: ícono de check, ID de pedido prominente, instrucción
+    de recogida y botón de reenvío de WhatsApp por si el popup fue bloqueado.
+
+--------------------------------------------------------------------------------
+FASE 5 Y 6 — WhatsApp, Admin Panel, Toggles de Stock
+--------------------------------------------------------------------------------
+Hecho:
+  - Flujo WhatsApp Golden Standard: al confirmar pedido, se abre automáticamente
+    WhatsApp con mensaje pre-formateado (ID, líneas, alérgenos, IVA, total) 
+    dirigido al número de prueba +51980675172.
+  - Número de producción del restaurante: +34 603 37 06 63 (configurar en deploy).
+  - Admin Panel en /admin con Supabase Realtime: nuevos pedidos llegan en tiempo
+    real con sonido de notificación.
+  - Botón de pánico para cerrar recepción de pedidos desde el panel.
+  - Toggles de stock por plato desde el panel de administrador.
+  - Botón "Listo para Recoger" en admin abre WhatsApp al cliente con mensaje
+    indicando que su pedido está listo.
+
+--------------------------------------------------------------------------------
+FASE 7 — Estabilidad y Bugfixes (sesión 2026-04-25)
+--------------------------------------------------------------------------------
+Hecho:
+  - Turbopack FATAL crash resuelto: npm run dev usa --webpack por defecto.
+  - Middleware renombrado a proxy.ts (convención Next.js 16).
+  - Parámetros de rutas dinámicas (params) convertidos a async en todas las
+    páginas: about, info, admin.
+  - Botón de descarga de menú PDF: enlace actualizado a Google Drive
+    (https://drive.google.com/file/d/1Nj0w1mObOY0xA8EtbZgH-7rj1V5wVVFk/).
+    El usuario puede reemplazar el PDF en Drive sin tocar el código.
+  - Página /info centrada correctamente con max-w-5xl + mx-auto.
+  - Icono de descarga alineado junto al texto del botón.
+  - Error React "asChild prop" corregido aplicando buttonVariants directamente
+    a los elementos <a>.
+
+Última actualización: 2026-04-25 19:26 +02:00

@@ -1,0 +1,31 @@
+ GET /es/cart 200 in 105ms (next.js: 27ms, proxy.ts: 13ms, generate-params: 12ms, application-code: 65ms)
+ GET /es/menu 200 in 186ms (next.js: 47ms, proxy.ts: 37ms, generate-params: 20ms, application-code: 102ms)
+⨯ upstream image response failed for https://images.unsplash.com/photo-1544333346-64e4fe18274b?q=80&w=800&auto=format&fit=crop 404
+⨯ upstream image response failed for https://images.unsplash.com/photo-1512058560366-cd242d4235cd?q=80&w=800&auto=format&fit=crop 404
+ GET /es/cart 200 in 97ms (next.js: 26ms, proxy.ts: 12ms, generate-params: 12ms, application-code: 59ms)
+ GET /es/cart 200 in 90ms (next.js: 26ms, proxy.ts: 11ms, generate-params: 11ms, application-code: 53ms)
+ GET /es/cart 200 in 91ms (next.js: 24ms, proxy.ts: 12ms, generate-params: 10ms, application-code: 56ms)
+ GET /es/cart 200 in 93ms (next.js: 24ms, proxy.ts: 13ms, generate-params: 10ms, application-code: 56ms)
+ GET /es/cart 200 in 73ms (next.js: 20ms, proxy.ts: 9ms, generate-params: 10ms, application-code: 44ms)
+ GET /es/checkout 200 in 5.7s (next.js: 5.4s, proxy.ts: 14ms, generate-params: 2.0s, application-code: 203ms)
+ GET /es/checkout 200 in 906ms (next.js: 89ms, proxy.ts: 655ms, generate-params: 29ms, application-code: 162ms)       
+ GET /es/checkout 200 in 454ms (next.js: 205ms, proxy.ts: 11ms, generate-params: 18ms, application-code: 238ms)       
+[ERROR][2026-04-25T15:47:54.403Z][submitPickupOrderAction:insertOrder] [object Object] {
+  extra: {
+    row: {
+      locale: 'es',
+      customer_name: 'Cristian Caceres',
+      customer_phone: '614668189',
+      customer_email: 'cristianvianey@gmail.com',
+      notes: 'Tengo hambre!',
+      total_cents: 2198,
+      payment_method: 'cash',
+      fulfillment: 'pickup',
+      status: 'pending',
+      lines: [Array]
+    }
+  },
+  stack: 'No stack trace'
+}
+ POST /es/checkout 200 in 1110ms (next.js: 17ms, proxy.ts: 15ms, generate-params: 9ms, application-code: 1078ms)      
+  └─ ƒ submitPickupOrderAction({"company":"","email":"cristianvianey@gmail.com","fullName":"Cristian Caceres","...":"4 items not stringified"}) in 843ms ..//src/actions/submit-pickup-order.ts

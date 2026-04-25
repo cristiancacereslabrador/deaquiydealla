@@ -1,0 +1,119 @@
+{
+  "Home": {
+    "heroEyebrow": "Cocina china contemporánea",
+    "heroTitle": "Sabor refinado, tradición viva",
+    "heroSubtitle": "Reserva tu experiencia o pide para recoger. Ingredientes frescos y recetas de autor.",
+    "ctaMenu": "Ver menú",
+    "ctaContact": "Reservar / Contacto",
+    "phaseNote": "Checkout listo. Siguiente: panel admin en tiempo real."
+  },
+  "Shell": {
+    "brand": "De Aquí y De Allá",
+    "navHome": "Inicio",
+    "navMenu": "Menú",
+    "navCart": "Carrito",
+    "footerRights": "Todos los derechos reservados.",
+    "themeLabel": "Tema",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro",
+    "themeSystem": "Sistema",
+    "localeLabel": "Idioma",
+    "localeEs": "Español",
+    "localeEn": "English"
+  },
+  "MenuPage": {
+    "title": "Menú",
+    "intro": "Platos preparados al wok. Añade al carrito y revisa el total antes del checkout."
+  },
+  "Catalog": {
+    "addToCart": "Añadir",
+    "imageUnavailable": "Imagen no disponible",
+    "filterAria": "Filtrar por categoría",
+    "categoryAll": "Todos",
+    "category": {
+      "entrantes": "Entrantes",
+      "combos": "Combos",
+      "arroces": "Arroces",
+      "vegetales": "Vegetales",
+      "tallarines": "Tallarines",
+      "otros": "Otros",
+      "bebidas": "Bebidas"
+    },
+    "empty": "No hay platos en esta categoría."
+  },
+  "CartPage": {
+    "title": "Carrito",
+    "loading": "Cargando carrito",
+    "intro": "Revisa cantidades y el total. El pedido se confirmará en el checkout (efectivo en tienda).",
+    "empty": "Tu carrito está vacío.",
+    "goToMenu": "Ir al menú",
+    "imageUnavailable": "Sin imagen",
+    "decrease": "Reducir cantidad",
+    "increase": "Aumentar cantidad",
+    "remove": "Quitar",
+    "totalLabel": "Total estimado",
+    "clear": "Vaciar carrito",
+    "continueShopping": "Seguir comprando",
+    "checkout": "Ir al checkout",
+    "hint": "Los precios se congelan al añadir; el importe final se confirma al recoger en el local."
+  },
+  "Checkout": {
+    "title": "Checkout",
+    "intro": "Recogida en tienda y pago en efectivo. Confirma tus datos; el total se recalcula en el servidor.",
+    "fields": {
+      "fullName": "Nombre y apellidos",
+      "phone": "Teléfono",
+      "email": "Correo (opcional)",
+      "notes": "Notas para cocina (opcional)"
+    },
+    "paymentNote": "Pagarás en efectivo al recoger el pedido en el local.",
+    "submit": "Confirmar pedido",
+    "submitting": "Enviando…",
+    "backToCart": "Volver al carrito",
+    "summaryTitle": "Tu pedido",
+    "totalLabel": "Total estimado",
+    "errors": {
+      "fallback": "Revisa los datos del formulario.",
+      "err_name_min": "Indica al menos 2 caracteres.",
+      "err_phone_min": "Teléfono demasiado corto.",
+      "err_phone_format": "Usa solo números, espacios y + ( ) -.",
+      "err_email_invalid": "Correo no válido.",
+      "err_lines_min": "Añade al menos un plato al carrito.",
+      "err_lines_max": "Demasiadas líneas en el pedido.",
+      "err_honeypot": "Solicitud rechazada."
+    },
+    "server": {
+      "UNKNOWN_DISH": "Hay un plato que ya no está en el menú o se agotó. Vuelve al carrito y actualiza.",
+      "CONFIG": "Faltan variables de Supabase en el servidor (.env.local).",
+      "DATABASE": "No se pudo guardar el pedido: {detail}",
+      "STORE_PAUSED": "El restaurante ha pausado temporalmente la recepción de pedidos por alta demanda."
+    }
+  },
+  "CheckoutSuccess": {
+    "kicker": "Pedido recibido",
+    "title": "¡Gracias!",
+    "body": "Te hemos registrado el pedido. Muestra este número en caja al recoger.",
+    "invalidTitle": "Enlace no válido",
+    "invalidBody": "Falta el identificador del pedido o no es correcto.",
+    "backMenu": "Volver al menú",
+    "home": "Inicio"
+  },
+  "ContactPage": {
+    "title": "Reservas y contacto",
+    "body": "Formulario y datos del local en una fase posterior."
+  },
+  "Admin": {
+    "title": "Panel de Control",
+    "panicButton": "Botón de pánico (Pausar pedidos)",
+    "panicActive": "¡PEDIDOS PAUSADOS!",
+    "panicInactive": "Recibiendo pedidos",
+    "ordersTitle": "Pedidos Recientes",
+    "noOrders": "No hay pedidos aún.",
+    "statusPending": "Pendiente",
+    "statusReady": "Listo para recoger",
+    "markReady": "Marcar como listo",
+    "stockTitle": "Inventario (Realtime)",
+    "stockAvailable": "Disponible",
+    "stockEmpty": "Agotado"
+  }
+}

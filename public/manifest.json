@@ -1,0 +1,20 @@
+{
+  "name": "De Aquí y De Allá",
+  "short_name": "DeAquíDeAllá",
+  "description": "Panel de cocina — gestión de pedidos en tiempo real",
+  "start_url": "/es/admin",
+  "display": "standalone",
+  "background_color": "#faf7f2",
+  "theme_color": "#8B0000",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable any"
+    }
+  ],
+  "categories": ["food", "productivity"],
+  "lang": "es"
+}

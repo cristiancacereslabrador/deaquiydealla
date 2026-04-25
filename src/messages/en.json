@@ -1,0 +1,119 @@
+{
+  "Home": {
+    "heroEyebrow": "Contemporary Chinese cuisine",
+    "heroTitle": "Refined flavor, living tradition",
+    "heroSubtitle": "Book your table or order for pickup. Fresh ingredients and chef-driven recipes.",
+    "ctaMenu": "View menu",
+    "ctaContact": "Book / Contact",
+    "phaseNote": "Checkout is live. Next: real-time admin dashboard."
+  },
+  "Shell": {
+    "brand": "De Aquí y De Allá",
+    "navHome": "Home",
+    "navMenu": "Menu",
+    "navCart": "Cart",
+    "footerRights": "All rights reserved.",
+    "themeLabel": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
+    "localeLabel": "Language",
+    "localeEs": "Español",
+    "localeEn": "English"
+  },
+  "MenuPage": {
+    "title": "Menu",
+    "intro": "Wok-style dishes. Add to your cart and review the total before checkout."
+  },
+  "Catalog": {
+    "addToCart": "Add",
+    "imageUnavailable": "Image unavailable",
+    "filterAria": "Filter by category",
+    "categoryAll": "All",
+    "category": {
+      "entrantes": "Starters",
+      "combos": "Combos",
+      "arroces": "Rice",
+      "vegetales": "Vegetables",
+      "tallarines": "Noodles",
+      "otros": "Others",
+      "bebidas": "Drinks"
+    },
+    "empty": "No dishes in this category."
+  },
+  "CartPage": {
+    "title": "Cart",
+    "loading": "Loading cart",
+    "intro": "Adjust quantities and check the total. You'll confirm at checkout (cash in store).",
+    "empty": "Your cart is empty.",
+    "goToMenu": "Browse menu",
+    "imageUnavailable": "No image",
+    "decrease": "Decrease quantity",
+    "increase": "Increase quantity",
+    "remove": "Remove",
+    "totalLabel": "Estimated total",
+    "clear": "Clear cart",
+    "continueShopping": "Continue shopping",
+    "checkout": "Go to checkout",
+    "hint": "Prices are locked when you add items; the final amount is confirmed at pickup."
+  },
+  "Checkout": {
+    "title": "Checkout",
+    "intro": "Pickup in store, cash on collection. Confirm your details; totals are recomputed on the server.",
+    "fields": {
+      "fullName": "Full name",
+      "phone": "Phone",
+      "email": "Email (optional)",
+      "notes": "Kitchen notes (optional)"
+    },
+    "paymentNote": "You will pay in cash when you pick up your order.",
+    "submit": "Place order",
+    "submitting": "Sending…",
+    "backToCart": "Back to cart",
+    "summaryTitle": "Your order",
+    "totalLabel": "Estimated total",
+    "errors": {
+      "fallback": "Please review the form.",
+      "err_name_min": "Enter at least 2 characters.",
+      "err_phone_min": "Phone number is too short.",
+      "err_phone_format": "Use digits, spaces and + ( ) - only.",
+      "err_email_invalid": "Invalid email address.",
+      "err_lines_min": "Add at least one dish to your cart.",
+      "err_lines_max": "Too many lines in this order.",
+      "err_honeypot": "Request rejected."
+    },
+    "server": {
+      "UNKNOWN_DISH": "A dish is no longer on the menu or is out of stock. Return to the cart and refresh.",
+      "CONFIG": "Supabase environment variables are missing on the server (.env.local).",
+      "DATABASE": "Could not save the order: {detail}",
+      "STORE_PAUSED": "The restaurant has temporarily paused incoming orders due to high demand."
+    }
+  },
+  "CheckoutSuccess": {
+    "kicker": "Order received",
+    "title": "Thank you!",
+    "body": "We saved your order. Show this number at the counter when you pick up.",
+    "invalidTitle": "Invalid link",
+    "invalidBody": "The order id is missing or invalid.",
+    "backMenu": "Back to menu",
+    "home": "Home"
+  },
+  "ContactPage": {
+    "title": "Reservations & contact",
+    "body": "Contact form and venue details will follow in a later phase."
+  },
+  "Admin": {
+    "title": "Admin Dashboard",
+    "panicButton": "Panic Button (Pause Orders)",
+    "panicActive": "ORDERS PAUSED!",
+    "panicInactive": "Receiving Orders",
+    "ordersTitle": "Recent Orders",
+    "noOrders": "No orders yet.",
+    "statusPending": "Pending",
+    "statusReady": "Ready for pickup",
+    "markReady": "Mark as Ready",
+    "stockTitle": "Inventory (Realtime)",
+    "stockAvailable": "In Stock",
+    "stockEmpty": "Out of Stock"
+  }
+}

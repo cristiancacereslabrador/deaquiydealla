@@ -1,0 +1,37 @@
+Actúa como un Desarrollador Senior Full-Stack experto en Next.js (App Router), TypeScript, Supabase y Tailwind CSS. Tu objetivo es generar el código para una PWA (Progressive Web App) de un restaurante de comida china de alto nivel.
+
+**FILOSOFÍA DE DESARROLLO (ESTRICTA):**
+1. **Calidad y Futuro:** Aplica siempre las mejores prácticas de arquitectura de software para evitar refactorizaciones. Considera escenarios de fallo, depuración y gestión de errores en cada paso.
+2. **Documentación:** TODO el código debe estar documentado con JSDoc detallado (equivalente a PHPDoc) y comentarios explicativos claros para que el código sea mantenible.
+3. **Validaciones:** Usa Zod para validar todas las entradas de datos. Implementa "Soft Deletes" (borrado lógico) en la base de datos para mantener integridad histórica.
+4. **Seguridad:** Implementa Rate Limiting para evitar spam de pedidos falsos y cumple con normativas de privacidad (RGPD).
+
+**STACK TECNOLÓGICO:**
+- Next.js + TypeScript + Tailwind CSS + Shadcn UI.
+- Estado: Zustand (Carrito y persistencia local de usuario).
+- Backend: Supabase (PostgreSQL + Realtime WebSockets).
+- i18n: Soporte para Español (default) e Inglés.
+- Temas: Modo Claro y Oscuro nativo.
+
+**CARACTERÍSTICAS AVANZADAS A INTEGRAR:**
+1. **Venta Cruzada (Cross-selling):** En el carrito, sugerir productos complementarios (bebidas, entradas).
+2. **Panel de Control del Dueño (Realtime):** - Recepción instantánea de pedidos con alerta sonora.
+   - Botón de "Pánico": Interruptor para pausar la recepción de pedidos web por alta demanda.
+   - Gestión de Stock: Toggles para ocultar platos agotados en tiempo real.
+3. **Automatización de WhatsApp:** Integración para enviar un mensaje personalizado automático al cliente cuando el dueño marque el pedido como "Listo para recoger".
+4. **Modo Menú QR:** Si la URL detecta el parámetro `?modo=mesa`, la web funcionará solo como carta digital interactiva sin opción de compra.
+5. **Historial Local:** Permitir al usuario ver y repetir su último pedido basado en datos de su navegador.
+6. **Sección FAQ & Info:** Horarios dinámicos, ingredientes, alérgenos y aviso de pago con Bizum/Efectivo en local.
+
+**INSTRUCCIONES DE EJECUCIÓN PASO A PASO:**
+No intentes generar todo el proyecto en una sola respuesta. Confirma que has procesado todos estos requerimientos y guíame fase por fase. 
+
+Fase 1: Configuración del proyecto, dependencias iniciales y estructura de carpetas.
+Fase 2: Configuración de tablas en Supabase (Platos, Pedidos, Categorías) con políticas de seguridad (RLS).
+Fase 3: Layout principal, i18n, Temas y Landing Page (Hero + FAQ).
+Fase 4: Catálogo de platos, sistema de filtros, carrito con Zustand y Venta Cruzada.
+Fase 5: Checkout validado y lógica de inserción de pedidos en Supabase.
+Fase 6: Panel de Administración en tiempo real con Toggles de Stock y Botón de Pánico.
+Fase 7: Sistema de notificaciones WhatsApp y despliegue final.
+
+Responde con "¡Entendido! Iniciando la construcción de la arquitectura maestra." y facilítame los comandos de terminal para el Paso 1.

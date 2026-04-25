@@ -1,0 +1,32 @@
+================================================================================
+  TAREAS PENDIENTES — DE AQUÍ Y DE ALLÁ
+================================================================================
+[COMPLETADO] LEER ESTA URL ALLI SE PUEDEN OBTENER LAS FOTOS Y LAS DESCRIPCIONES 
+DE LOS PLATOS PARA EL RESTAURANTE
+https://glovoapp.com/es/es/granada/stores/de-aqui-y-de-alla-comida-para-llevar-granada
+
+1. [COMPLETADO] CONFIGURAR CREDENCIALES DE SUPABASE
+   -----------------------------------
+   Edita el archivo `.env.local` en la raíz del proyecto y rellena los siguientes
+   valores con los datos de tu panel de Supabase (Settings -> API):
+   
+   - NEXT_PUBLIC_SUPABASE_URL= (Tu URL de proyecto)
+   - NEXT_PUBLIC_SUPABASE_ANON_KEY= (Tu clave anónima pública)
+
+2. [COMPLETADO] CONFIGURAR BASE DE DATOS (MIGRACIONES)
+   --------------------------------------
+   Debes ejecutar los siguientes archivos SQL en el "SQL Editor" de tu panel de
+   Supabase para que las tablas de pedidos y stock funcionen:
+   
+   - supabase/migrations/001_pedidos.sql
+   - supabase/migrations/002_admin_setup.sql
+
+3. [COMPLETADO] EJECUTAR EL PROYECTO
+   ---------------------
+   Abre una terminal en esta carpeta y ejecuta:
+   npm run dev
+   
+   Luego abre: http://127.0.0.1:3286 en tu navegador.
+
+================================================================================
+Archivo actualizado por Antigravity.
