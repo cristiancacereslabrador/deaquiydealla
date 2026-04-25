@@ -173,7 +173,7 @@ export function InventoryDashboard() {
                 {ingredients.map(ing => (
                   <tr key={ing.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 font-medium flex items-center gap-2">
-                      {ing.stock_quantity <= 0 && <AlertCircle className="w-4 h-4 text-red-500" title="Sin stock" />}
+                      {ing.stock_quantity <= 0 && <AlertCircle className="w-4 h-4 text-red-500" aria-label="Sin stock" />}
                       {ing.name}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{ing.unit}</td>
