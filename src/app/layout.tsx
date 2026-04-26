@@ -1,5 +1,6 @@
 import { AppThemeProvider } from "@/components/providers/app-theme-provider";
 import { PWAProvider } from "@/components/providers/pwa-provider";
+import { PWASplashScreen } from "@/components/pwa/pwa-splash-screen";
 import { RESTAURANT_BRAND_NAME } from "@/lib/brand";
 import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans, Caveat } from "next/font/google";
@@ -36,10 +37,10 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    // "black" hace que la barra de estado de iOS sea oscura sobre fondo negro
     statusBarStyle: "black-translucent",
     title: "De Aquí y De Allá",
-    startupImage: "/images/splash-icon.png",
+    // No usamos startupImage porque iOS requiere ~10 tamaños exactos.
+    // En su lugar usamos un splash CSS en el layout que desaparece al cargar.
   },
   formatDetection: { telephone: false },
   icons: {
@@ -74,6 +75,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         suppressHydrationWarning
       >
         <AppThemeProvider>
+          <PWASplashScreen />
           <PWAProvider />
           {children}
         </AppThemeProvider>
