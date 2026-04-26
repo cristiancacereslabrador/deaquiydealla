@@ -36,19 +36,21 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    // "black" hace que la barra de estado de iOS sea oscura sobre fondo negro
+    statusBarStyle: "black-translucent",
     title: "De Aquí y De Allá",
-    // startupImage: "/images/logo.png", // Podría añadirse si se tiene una imagen de splash
+    startupImage: "/images/splash-icon.png",
   },
   formatDetection: { telephone: false },
   icons: {
-    icon: "/images/logo.png",
-    apple: "/images/logo.png",
+    icon: "/images/splash-icon.png",
+    apple: "/images/splash-icon.png",
   },
 };
 
 export const viewport = {
-  themeColor: "#8B0000",
+  // Negro para que el splash screen coincida con el fondo del icono
+  themeColor: "#000000",
 };
 
 type RootLayoutProps = {
