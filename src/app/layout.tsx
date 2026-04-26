@@ -2,7 +2,7 @@ import { AppThemeProvider } from "@/components/providers/app-theme-provider";
 import { PWAProvider } from "@/components/providers/pwa-provider";
 import { RESTAURANT_BRAND_NAME } from "@/lib/brand";
 import type { Metadata } from "next";
-import { Cormorant_Garamond, DM_Sans } from "next/font/google";
+import { Cormorant_Garamond, DM_Sans, Caveat } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
 
@@ -14,6 +14,12 @@ const dmSans = DM_Sans({
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const caveat = Caveat({
+  variable: "--font-caveat",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
@@ -59,7 +65,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html
       lang="es"
       suppressHydrationWarning
-      className={`${dmSans.variable} ${cormorant.variable} h-full`}
+      className={`${dmSans.variable} ${cormorant.variable} ${caveat.variable} h-full`}
     >
       <body 
         className="min-h-full bg-background font-sans text-foreground antialiased"
