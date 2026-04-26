@@ -162,3 +162,10 @@
 @utility font-cursive {
   font-family: var(--font-cursive);
 }
+/* Fondo solido garantizado para el panel del menu movil */
+.mobile-menu-panel {
+  background-color: white;
+}
+.dark .mobile-menu-panel {
+  background-color: #1a1a1a;
+}

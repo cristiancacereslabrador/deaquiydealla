@@ -92,12 +92,12 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
             }}
           />
 
-          {/* Panel lateral: usa bg-card que está garantizado en producción */}
+          {/* Panel lateral */}
           <div
             role="dialog"
             aria-modal="true"
             aria-label="Menú principal"
-            className="bg-card"
+            className="mobile-menu-panel"
             style={{
               position: "fixed",
               top: 0,
