@@ -17,7 +17,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BRAND_INFO } from "@/lib/brand";
-
+import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { useTranslations } from "next-intl";
 
 interface MobileMenuProps {
@@ -35,24 +36,27 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
     if (open) {
       document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = "";
     }
     return () => {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = "";
     };
   }, [open]);
 
   const navItems = [
+    { href: "/", label: t("navHome"), icon: Home },
+    { href: "/menu", label: t("navMenu"), icon: UtensilsCrossed },
+    ...(user
+      ? [{ href: "/profile", label: t("navProfile"), icon: User }]
+      : [{ href: "/login", label: t("navLogin"), icon: User }]),
     { href: "/about", label: t("navAbout"), icon: Users },
     { href: "/contact", label: t("navContact"), icon: Mail },
+    ...(isAdmin ? [{ href: "/admin", label: t("navAdmin") || "Admin", icon: Zap }] : []),
   ];
-
-  if (isAdmin) {
-    navItems.push({ href: "/admin", label: t("navAdmin") || "Admin", icon: Zap });
-  }
 
   return (
     <>
+      {/* Botón hamburguesa – solo en móvil (< md) */}
       <Button
         variant="outline"
         size="icon"
@@ -63,103 +67,105 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
         <Menu className="h-6 w-6 text-[#c8102e]" />
       </Button>
 
-      {/* Overlay: Higher opacity and blur */}
+      {/* Solo renderizar overlay y panel cuando está abierto */}
       {open && (
-        <div 
-          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md md:hidden"
-          onClick={() => setOpen(false)}
-        />
-      )}
-
-      {/* Side Menu: Solid background, better shadow */}
-      <div
-        className={cn(
-          "fixed inset-y-0 right-0 z-[101] w-full max-w-[280px] bg-white dark:bg-[#0a0a0a] p-6 shadow-2xl border-l border-border/10 transition-all duration-300 ease-in-out md:hidden flex flex-col",
-          open ? "translate-x-0 opacity-100 visible" : "translate-x-full opacity-0 invisible pointer-events-none"
-        )}
-      >
-        <div className="flex items-center justify-between mb-8">
-          <span className="text-xl font-black text-[#c8102e] tracking-tight">{t("brand")}</span>
-          <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="rounded-full hover:bg-muted">
-            <X className="h-6 w-6" />
-          </Button>
-        </div>
-
-        <nav className="space-y-2">
-          {/* Main items (even if they are visible in header, it's good to have them here too for redundancy) */}
-          <Link
-            href="/"
+        <>
+          {/* Overlay oscuro semitransparente */}
+          <div
+            className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm"
             onClick={() => setOpen(false)}
-            className={cn(
-              "flex items-center gap-4 px-4 py-4 rounded-2xl text-base font-bold transition-all",
-              pathname === "/" ? "bg-[#c8102e] text-white shadow-lg shadow-[#c8102e]/20" : "hover:bg-muted"
-            )}
-          >
-            <Home className="h-5 w-5" /> {t("navHome")}
-          </Link>
-          <Link
-            href="/menu"
-            onClick={() => setOpen(false)}
-            className={cn(
-              "flex items-center gap-4 px-4 py-4 rounded-2xl text-base font-bold transition-all",
-              pathname.includes("/menu") ? "bg-[#c8102e] text-white shadow-lg shadow-[#c8102e]/20" : "hover:bg-muted"
-            )}
-          >
-            <UtensilsCrossed className="h-5 w-5" /> {t("navMenu")}
-          </Link>
-          <Link
-            href="/profile"
-            onClick={() => setOpen(false)}
-            className={cn(
-              "flex items-center gap-4 px-4 py-4 rounded-2xl text-base font-bold transition-all",
-              pathname.includes("/profile") ? "bg-[#c8102e] text-white shadow-lg shadow-[#c8102e]/20" : "hover:bg-muted"
-            )}
-          >
-            <User className="h-5 w-5" /> {t("navProfile")}
-          </Link>
+            aria-hidden="true"
+          />
 
-          <div className="h-px bg-border/50 my-4 mx-2" />
+          {/* Panel lateral — fondo SÓLIDO, sin transparencia */}
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menú de navegación"
+            className="fixed inset-y-0 right-0 z-[101] w-[85vw] max-w-[300px] bg-[#fdfbf7] dark:bg-[#111] shadow-2xl flex flex-col"
+          >
+            {/* Cabecera del panel */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border/40">
+              <span className="text-xl font-black text-[#c8102e] tracking-tight">
+                {t("brand")}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setOpen(false)}
+                className="rounded-full hover:bg-muted"
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
 
-          {/* Secondary items (the ones that go into the hamburger) */}
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setOpen(false)}
-              className={cn(
-                "flex items-center gap-4 px-4 py-4 rounded-2xl text-base font-bold transition-all",
-                pathname.includes(item.href) ? "bg-[#c8102e] text-white shadow-lg shadow-[#c8102e]/20" : "hover:bg-muted"
-              )}
-            >
-              <item.icon className={cn("h-5 w-5", item.href === "/admin" && !pathname.includes("/admin") && "text-amber-500")} />
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+            {/* Navegación */}
+            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+              {navItems.map((item) => {
+                const isActive =
+                  item.href === "/"
+                    ? pathname === "/"
+                    : pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      "flex items-center gap-4 px-4 py-3.5 rounded-2xl text-base font-bold transition-all",
+                      isActive
+                        ? "bg-[#c8102e] text-white shadow-lg shadow-[#c8102e]/20"
+                        : "hover:bg-muted text-foreground"
+                    )}
+                  >
+                    <item.icon
+                      className={cn(
+                        "h-5 w-5 shrink-0",
+                        item.href === "/admin" && !isActive && "text-amber-500"
+                      )}
+                    />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
 
-        {/* Contact info in menu */}
-        <div className="mt-auto pt-8 border-t border-border/50 space-y-4">
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Atención al Cliente</p>
-          <div className="grid grid-cols-2 gap-3">
-            <a 
-              href={`tel:${BRAND_INFO.phone.replace(/\s/g, '')}`}
-              className="flex flex-col items-center gap-2 p-5 rounded-2xl bg-muted/30 text-center hover:bg-[#ffc244] hover:text-black transition-all"
-            >
-              <Phone className="h-6 w-6 text-[#c8102e]" />
-              <span className="text-xs font-black">Llamar</span>
-            </a>
-            <a 
-              href={BRAND_INFO.whatsapp}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex flex-col items-center gap-2 p-5 rounded-2xl bg-muted/30 text-center hover:bg-[#25D366] hover:text-white transition-all"
-            >
-              <MessageCircle className="h-6 w-6 text-[#25D366]" />
-              <span className="text-xs font-black">WhatsApp</span>
-            </a>
+            {/* Footer: Tema, Idioma y Contacto rápido */}
+            <div className="border-t border-border/40 px-5 py-4 space-y-4">
+              {/* Tema e Idioma */}
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+                  Preferencias
+                </span>
+                <div className="flex items-center gap-2">
+                  <LocaleSwitcher />
+                  <ThemeToggle />
+                </div>
+              </div>
+
+              {/* Contacto rápido */}
+              <div className="grid grid-cols-2 gap-3">
+                <a
+                  href={`tel:${BRAND_INFO.phone.replace(/\s/g, "")}`}
+                  className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-muted/50 hover:bg-[#ffc244] hover:text-black transition-all font-bold text-sm"
+                >
+                  <Phone className="h-4 w-4 text-[#c8102e]" />
+                  Llamar
+                </a>
+                <a
+                  href={BRAND_INFO.whatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-muted/50 hover:bg-[#25D366] hover:text-white transition-all font-bold text-sm"
+                >
+                  <MessageCircle className="h-4 w-4 text-[#25D366]" />
+                  WhatsApp
+                </a>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </>
   );
 }

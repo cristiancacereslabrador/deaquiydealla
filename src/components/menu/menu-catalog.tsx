@@ -78,11 +78,16 @@ export function MenuCatalog({ dishes }: MenuCatalogProps) {
 
   return (
     <div className="space-y-4">
+      {/* Scrollable filter bar – clipped to viewport width, no horizontal overflow */}
       <div
-        className="sticky top-14 sm:top-16 z-40 flex overflow-x-auto hide-scrollbar gap-2 bg-background/95 backdrop-blur py-3 border-b -mx-4 px-4 sm:mx-0 sm:px-0 sm:border-none shadow-sm sm:shadow-none transition-all"
-        role="tablist"
-        aria-label={t("filterAria")}
+        className="sticky top-14 sm:top-16 z-40 bg-background/95 backdrop-blur border-b shadow-sm sm:border-none sm:shadow-none -mx-4 sm:mx-0"
       >
+        <div
+          className="flex gap-2 overflow-x-auto py-3 px-4 sm:px-0 scrollbar-none"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          role="tablist"
+          aria-label={t("filterAria")}
+        >
         <FilterChip
           selected={active === "all"}
           onClick={() => setActive("all")}
@@ -96,7 +101,8 @@ export function MenuCatalog({ dishes }: MenuCatalogProps) {
             label={t(`category.${key}`)}
           />
         ))}
-      </div>
+        </div>{/* end scrollable inner */}
+      </div>{/* end sticky outer */}
 
       {filtered.length === 0 ? (
         <p className="text-center text-muted-foreground">{t("empty")}</p>
