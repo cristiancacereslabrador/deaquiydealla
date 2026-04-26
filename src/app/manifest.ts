@@ -15,27 +15,46 @@ export default function manifest(): MetadataRoute.Manifest {
     icons: [
       {
         src: '/images/logo.png',
-        sizes: '192x192',
+        sizes: '1024x1024',
         type: 'image/png',
         purpose: 'any',
       },
       {
         src: '/images/logo.png',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'any',
-      },
-      {
-        src: '/images/logo.png',
-        sizes: '192x192',
+        sizes: '1024x1024',
         type: 'image/png',
         purpose: 'maskable',
       },
+    ],
+    screenshots: [
       {
         src: '/images/logo.png',
-        sizes: '512x512',
+        sizes: '1024x1024',
         type: 'image/png',
-        purpose: 'maskable',
+        form_factor: 'wide',
+        label: 'De Aquí y De Allá - Restaurante',
+      },
+      {
+        src: '/images/logo.png',
+        sizes: '1024x1024',
+        type: 'image/png',
+        label: 'De Aquí y De Allá - Pedidos',
+      },
+    ],
+    shortcuts: [
+      {
+        name: 'Ver Menú',
+        short_name: 'Menú',
+        description: 'Explora nuestra carta de comida china y latina',
+        url: '/menu',
+        icons: [{ src: '/images/logo.png', sizes: '1024x1024' }],
+      },
+      {
+        name: 'Mi Carrito',
+        short_name: 'Carrito',
+        description: 'Finaliza tu pedido',
+        url: '/cart',
+        icons: [{ src: '/images/logo.png', sizes: '1024x1024' }],
       },
     ],
     categories: ['food', 'productivity'],
