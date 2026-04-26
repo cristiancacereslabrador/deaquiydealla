@@ -110,6 +110,7 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
               boxShadow: "-8px 0 40px rgba(0,0,0,0.35)",
               overflowY: "auto",
               borderLeft: "1px solid rgba(0,0,0,0.1)",
+              backgroundColor: "#ffffff",
             }}
           >
             {/* Cabecera del panel */}
