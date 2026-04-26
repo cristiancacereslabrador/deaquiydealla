@@ -250,23 +250,23 @@ export function CartView() {
             <Sparkles className="w-5 h-5" />
             <h3 className="font-heading text-lg font-bold">Completa tu pedido</h3>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             {suggestedDishes.map(dish => (
-              <div key={dish.id} className="flex items-center gap-4 bg-background p-3 rounded-xl border shadow-sm">
-                <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-muted shrink-0">
+              <div key={dish.id} className="flex items-center gap-3 bg-background p-2.5 rounded-xl border shadow-sm overflow-hidden">
+                <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-muted shrink-0">
                   <Image src={dish.imageUrl} alt={dish.nameEs} fill className="object-cover" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-sm truncate">{locale === "en" ? dish.nameEn : dish.nameEs}</h4>
-                  <p className="text-xs text-muted-foreground">{formatCentsToCurrency(dish.priceCents, locale)}</p>
+                  <h4 className="font-bold text-sm truncate leading-tight">{locale === "en" ? dish.nameEn : dish.nameEs}</h4>
+                  <p className="text-[11px] text-muted-foreground font-medium">{formatCentsToCurrency(dish.priceCents, locale)}</p>
                 </div>
                 <button
                   type="button"
                   disabled={!isOpen}
                   onClick={() => addItem({ dishId: dish.id, quantity: 1, unitPriceCents: dish.priceCents, nameEs: dish.nameEs, nameEn: dish.nameEn, imageUrl: dish.imageUrl })}
-                  className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "shrink-0")}
+                  className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "shrink-0 h-8 px-3 text-xs")}
                 >
-                  <Plus className="w-4 h-4 mr-1" /> Añadir
+                  <Plus className="w-3.5 h-3.5 mr-1" /> {t("add") || "Añadir"}
                 </button>
               </div>
             ))}
