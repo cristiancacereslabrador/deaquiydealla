@@ -28,7 +28,7 @@ export function AppThemeProvider({ children }: AppThemeProviderProps) {
   return (
     <ThemeProvider
       attribute="class"
-      defaultTheme="system"
+      defaultTheme="light"
       enableSystem
       disableTransitionOnChange
     >

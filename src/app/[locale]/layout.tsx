@@ -1,6 +1,7 @@
 import { HtmlLangSync } from "@/components/i18n/html-lang-sync";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
+import { StoreStatusBanner } from "@/components/layout/store-status-banner";
 import { routing } from "@/i18n/routing";
 import { RESTAURANT_BRAND_NAME } from "@/lib/brand";
 import type { Metadata } from "next";
@@ -68,6 +69,7 @@ export default async function LocaleLayout({
     <NextIntlClientProvider messages={messages}>
       <HtmlLangSync />
       <div className="flex min-h-screen flex-col">
+        <StoreStatusBanner />
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter />

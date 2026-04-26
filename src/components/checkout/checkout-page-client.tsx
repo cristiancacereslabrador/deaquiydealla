@@ -18,7 +18,11 @@ import { useForm } from "react-hook-form";
  *
  * @returns Vista de checkout o skeleton / redirección.
  */
-export function CheckoutPageClient() {
+export function CheckoutPageClient({
+  initialProfile,
+}: {
+  initialProfile?: { fullName: string; phone: string; email: string };
+}) {
   const t = useTranslations("Checkout");
   const locale = useLocale();
   const router = useRouter();
@@ -35,9 +39,9 @@ export function CheckoutPageClient() {
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutCustomerSchema),
     defaultValues: {
-      fullName: "",
-      phone: "",
-      email: "",
+      fullName: initialProfile?.fullName || "",
+      phone: initialProfile?.phone || "",
+      email: initialProfile?.email || "",
       notes: "",
       company: "",
     },

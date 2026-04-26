@@ -72,11 +72,18 @@ export async function submitPickupOrderAction(
       .eq("id", "panic_button")
       .single();
 
-    if (panicData && panicData.value.active) {
+    const { getStoreStatus } = await import("@/lib/store-status");
+    const { isOpen, reason, nextOpening } = getStoreStatus(panicData?.value?.active ?? false);
+
+    if (!isOpen) {
+      let errorMsg = "paused";
+      if (reason === "schedule") errorMsg = `Abrimos a las ${nextOpening}`;
+      if (reason === "closed_day") errorMsg = "Hoy Jueves estamos cerrados por descanso.";
+
       return {
         ok: false,
         code: "STORE_PAUSED",
-        message: "paused",
+        message: errorMsg,
       };
     }
 
@@ -154,27 +161,21 @@ export async function submitPickupOrderAction(
       : "Ninguno detectado";
 
     const msg = [
-      `*NUEVO PEDIDO WEB* 🥡`,
-      `━━━━━━━━━━━━━━━━━━━━`,
-      `🆔 *Pedido:* ${data.id.slice(0, 8)}`,
-      `👤 *Cliente:* ${row.customer_name}`,
-      `📞 *Teléfono:* ${row.customer_phone}`,
-      row.notes ? `📝 *Notas:* ${row.notes}` : "",
-      `━━━━━━━━━━━━━━━━━━━━`,
+      `*NUEVO PEDIDO WEB*`,
+      `Pedido: ${data.id.slice(0, 8)}`,
+      `Cliente: ${row.customer_name}`,
+      `Teléfono: ${row.customer_phone}`,
+      row.notes ? `Notas: ${row.notes}` : "",
       `*Detalle:*`,
       row.lines.map((l: any) => `- ${l.quantity}x ${l.nameEs ?? l.nameEn ?? l.dishId}`).join("\n"),
-      `━━━━━━━━━━━━━━━━━━━━`,
-      `⚠️ *Alérgenos:* ${allergensStr}`,
-      `━━━━━━━━━━━━━━━━━━━━`,
-      `💰 *Desglose:*`,
-      `- Base: ${netStr}`,
-      `- IVA (10%): ${ivaStr}`,
-      `- *TOTAL:* ${totalStr}`,
-      `━━━━━━━━━━━━━━━━━━━━`,
-      `📍 Recogida en local. Pago en Efectivo/TPV.`,
+      `Alérgenos: ${allergensStr}`,
+      `*TOTAL:* ${totalStr} (Base: ${netStr} | IVA: ${ivaStr})`,
+      `Recogida en local. Pago en Efectivo.`
     ].filter(Boolean).join("\n");
 
-    const whatsappUrl = `https://wa.me/51980675172?text=${encodeURIComponent(msg)}`;
+    const { BRAND_INFO } = await import("@/lib/brand");
+    const phone = BRAND_INFO.phone.replace(/[^0-9]/g, '');
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(msg)}`;
 
     return { ok: true, orderId: data.id as string, whatsappUrl };
   } catch (err) {

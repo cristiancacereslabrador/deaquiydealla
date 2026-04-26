@@ -17,11 +17,11 @@ export function RepeatOrderBanner() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem("last_order_cart");
-      if (saved) {
+      if (saved && saved !== "undefined" && saved !== "null" && saved.trim() !== "") {
         setLastOrder(JSON.parse(saved));
       }
     } catch (e) {
-      // ignore
+      console.error("Error parsing last_order_cart", e);
     }
   }, []);
 

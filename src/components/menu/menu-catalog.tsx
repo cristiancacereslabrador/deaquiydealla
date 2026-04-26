@@ -4,7 +4,8 @@ import { DishCard } from "@/components/menu/dish-card";
 import type { Dish, DishCategory } from "@/data/dishes";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type MenuCatalogProps = {
   /** Lista de platos a renderizar (normalmente {@link import("@/data/dishes").DISHES}). */
@@ -21,13 +22,54 @@ const CATEGORY_KEYS: DishCategory[] = [
 ];
 
 /**
- * Catálogo filtrable por categoría con rejilla responsive.
- *
- * @param props - Platos disponibles.
+ * Catálogo filtrable por categoría con rejilla responsive y estado de stock en tiempo real.
  */
 export function MenuCatalog({ dishes }: MenuCatalogProps) {
   const t = useTranslations("Catalog");
   const [active, setActive] = useState<DishCategory | "all">("all");
+  const [outOfStockIds, setOutOfStockIds] = useState<Set<string>>(new Set());
+  const supabase = createBrowserSupabaseClient();
+
+  useEffect(() => {
+    // 1. Carga inicial de platos agotados
+    const fetchStock = async () => {
+      const { data } = await supabase
+        .from("dish_status")
+        .select("dish_id")
+        .eq("is_available", false);
+      
+      if (data) {
+        setOutOfStockIds(new Set(data.map(d => d.dish_id)));
+      }
+    };
+
+    fetchStock();
+
+    // 2. Suscripción en tiempo real
+    const channel = supabase
+      .channel("menu-stock-sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dish_status" },
+        (payload) => {
+          const { dish_id, is_available } = payload.new as { dish_id: string; is_available: boolean };
+          setOutOfStockIds(prev => {
+            const next = new Set(prev);
+            if (is_available) {
+              next.delete(dish_id);
+            } else {
+              next.add(dish_id);
+            }
+            return next;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
 
   const filtered = useMemo(() => {
     if (active === "all") return [...dishes];
@@ -62,7 +104,10 @@ export function MenuCatalog({ dishes }: MenuCatalogProps) {
         <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((dish) => (
             <li key={dish.id}>
-              <DishCard dish={dish} />
+              <DishCard 
+                dish={dish} 
+                isOutOfStock={outOfStockIds.has(dish.id)} 
+              />
             </li>
           ))}
         </ul>
@@ -98,3 +143,4 @@ function FilterChip({ selected, onClick, label }: FilterChipProps) {
     </button>
   );
 }
+

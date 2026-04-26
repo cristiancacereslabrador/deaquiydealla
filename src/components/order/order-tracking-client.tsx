@@ -6,7 +6,7 @@ import { formatCentsToCurrency } from "@/lib/money";
 import { Link } from "@/i18n/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, ChefHat, Clock, PackageCheck, ShoppingBag, ExternalLink } from "lucide-react";
+import { CheckCircle2, ChefHat, Clock, PackageCheck, ShoppingBag, ExternalLink, MapPin } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
 interface OrderTrackingClientProps {
@@ -134,7 +134,7 @@ export function OrderTrackingClient({ orderId }: OrderTrackingClientProps) {
           )}
           {step === 2 && (
             <>
-              <h3 className="text-xl font-bold text-orange-600 dark:text-orange-400">¡Tu comida está en los fogones! 🔥</h3>
+              <h3 className="text-xl font-bold text-orange-600 dark:text-orange-400">¡Tu comida está en los fogones!</h3>
               <p className="text-muted-foreground">Los woks están a tope. Estará listo en unos 15-20 minutos.</p>
             </>
           )}
@@ -142,9 +142,17 @@ export function OrderTrackingClient({ orderId }: OrderTrackingClientProps) {
             <>
               <h3 className="text-xl font-bold text-green-600 dark:text-green-400">¡Tu pedido está listo para recoger! 🎉</h3>
               <p className="text-muted-foreground">Puedes pasar a recogerlo por nuestro local. ¡Que lo disfrutes!</p>
-              <div className="pt-4 flex justify-center">
-                <Link href="/info" className={cn(buttonVariants({ variant: "outline" }), "rounded-full")}>
-                  Ver cómo llegar a la tienda
+              <div className="pt-4 flex flex-col items-center gap-3">
+                <a 
+                  href="https://maps.app.goo.gl/EJBP3AiC65QQcpUV7" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className={cn(buttonVariants({ variant: "default" }), "rounded-full gap-2")}
+                >
+                  <MapPin className="w-4 h-4" /> Ver dirección en Google Maps
+                </a>
+                <Link href="/info" className="text-xs text-muted-foreground underline">
+                  Ver más información del local
                 </Link>
               </div>
             </>

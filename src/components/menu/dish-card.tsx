@@ -12,14 +12,14 @@ import { useCallback, useState } from "react";
 type DishCardProps = {
   /** Plato a mostrar. */
   dish: Dish;
+  /** Si el plato está agotado. */
+  isOutOfStock?: boolean;
 };
 
 /**
  * Tarjeta de producto con imagen, textos localizados y acción de añadir al carrito.
- *
- * @param props - Plato del catálogo.
  */
-export function DishCard({ dish }: DishCardProps) {
+export function DishCard({ dish, isOutOfStock = false }: DishCardProps) {
   const locale = useLocale();
   const t = useTranslations("Catalog");
   const addItem = useCartStore((s) => s.addItem);
@@ -39,6 +39,8 @@ export function DishCard({ dish }: DishCardProps) {
    * Añade una unidad al carrito con validación en el store (Zod).
    */
   const handleAdd = useCallback(() => {
+    if (isOutOfStock) return;
+    
     const ok = addItem({
       dishId: dish.id,
       quantity: 1,
@@ -51,10 +53,13 @@ export function DishCard({ dish }: DishCardProps) {
       setAddedFlash(true);
       window.setTimeout(() => setAddedFlash(false), 1200);
     }
-  }, [addItem, dish]);
+  }, [addItem, dish, isOutOfStock]);
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm transition-shadow hover:shadow-md">
+    <article className={cn(
+      "group flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm transition-all",
+      isOutOfStock ? "opacity-75 grayscale-[0.5]" : "hover:shadow-md"
+    )}>
 
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
         {!imgError ? (
@@ -72,7 +77,16 @@ export function DishCard({ dish }: DishCardProps) {
             {t("imageUnavailable")}
           </div>
         )}
+
+        {isOutOfStock && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+            <span className="rounded-full bg-red-600 px-4 py-1.5 text-sm font-bold text-white shadow-lg">
+              AGOTADO
+            </span>
+          </div>
+        )}
       </div>
+
       <div className="flex flex-1 flex-col gap-3 p-4 sm:p-5">
         <div className="space-y-1">
           <h2 className="font-heading text-lg font-semibold leading-snug text-foreground sm:text-xl">
@@ -97,21 +111,29 @@ export function DishCard({ dish }: DishCardProps) {
 
         </div>
         <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
-          <p className="font-medium text-primary">{formattedPrice}</p>
+          <p className={cn(
+            "font-medium",
+            isOutOfStock ? "text-muted-foreground line-through" : "text-primary"
+          )}>
+            {formattedPrice}
+          </p>
           <button
             type="button"
             onClick={handleAdd}
+            disabled={isOutOfStock}
             className={cn(
               buttonVariants({ size: "sm" }),
               "gap-1.5",
-              addedFlash && "ring-2 ring-[oklch(0.72_0.14_85)]"
+              addedFlash && "ring-2 ring-[oklch(0.72_0.14_85)]",
+              isOutOfStock && "bg-muted text-muted-foreground hover:bg-muted cursor-not-allowed"
             )}
           >
             <ShoppingBag className="size-4" aria-hidden />
-            {t("addToCart")}
+            {isOutOfStock ? "Agotado" : t("addToCart")}
           </button>
         </div>
       </div>
     </article>
   );
 }
+

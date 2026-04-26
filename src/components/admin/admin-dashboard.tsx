@@ -18,7 +18,10 @@ import {
   MessageCircle,
   Zap,
   ChefHat,
+  DoorClosed,
+  DoorOpen,
 } from "lucide-react";
+import { getStoreStatus } from "@/lib/store-status";
 
 /* ─── Types ────────────────────────────────────────────────────────────── */
 
@@ -81,17 +84,18 @@ const COLUMN_CONFIG: Record<Column, { label: string; color: string; bg: string; 
 /* ─── WhatsApp message builders ────────────────────────────────────────── */
 
 function buildAcceptedMessage(order: Order): string {
-  return `✅ *Hola ${order.customer_name}!*\n\nHemos recibido tu pedido *#${order.id.slice(0, 8)}* y lo estamos preparando ahora mismo 👨‍🍳\n\nTe avisaremos cuando esté listo para recoger.\n\n_De Aquí y De Allá — ${BRAND_INFO.address}_`;
+  return `*Hola ${order.customer_name}!*\n\nHemos recibido tu pedido *#${order.id.slice(0, 8)}* y ya estamos en la cocina preparando tus platos 🥡\n\nTe avisaremos por aquí mismo en cuanto esté listo para recoger.\n\n_De Aquí y De Allá_`;
 }
 
 function buildReadyMessage(order: Order): string {
-  return `🎉 *¡Tu pedido está listo, ${order.customer_name}!*\n\n📦 *Pedido #${order.id.slice(0, 8)}* listo para recoger.\n\n📍 *Dónde:* ${BRAND_INFO.address}\n💵 *Pago:* Efectivo / TPV en local\n\n¡Te esperamos! 😊`;
+  return `✅ *¡Tu pedido está listo, ${order.customer_name}!*\n\n📦 *Pedido #${order.id.slice(0, 8)}* listo para recoger.\n\n📍 *Ubicación:* ${BRAND_INFO.address}\n🗺️ *Ver en Google Maps:* https://maps.app.goo.gl/EJBP3AiC65QQcpUV7\n\n💵 *Pago:* Efectivo o Tarjeta en local\n\n¡Te esperamos! ✨`;
 }
 
 function waUrl(phone: string, message: string): string {
   const clean = phone.replace(/\D/g, "");
-  const prefix = clean.startsWith("34") || clean.startsWith("51") || clean.startsWith("1") ? clean : `34${clean}`;
-  return `https://wa.me/${prefix}?text=${encodeURIComponent(message)}`;
+  // Default to Spain (34) if no country code provided
+  const prefix = clean.length <= 9 ? `34${clean}` : clean;
+  return `https://api.whatsapp.com/send?phone=${prefix}&text=${encodeURIComponent(message)}`;
 }
 
 /* ─── Order Card ─────────────────────────────────────────────────────── */
@@ -225,7 +229,8 @@ export function AdminDashboard() {
     const channel = supabase.channel("admin_kanban")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "pedidos" }, (payload) => {
         setOrders(prev => [...prev, payload.new as Order]);
-        new Audio("/notification.mp3").play().catch(() => {});
+        const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+        audio.play().catch(() => {});
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "pedidos" }, (payload) => {
         setOrders(prev => prev.map(o => o.id === payload.new.id ? payload.new as Order : o));
@@ -327,20 +332,58 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      {/* ── Panic button ── */}
-      <button
-        onClick={togglePanic}
-        className={cn(
-          buttonVariants({ size: "lg" }),
-          "w-full h-14 text-lg font-bold gap-2",
-          panicActive
-            ? "bg-red-600 hover:bg-red-700 text-white"
-            : "bg-card border-2 border-border text-foreground hover:bg-muted"
+      {/* ── Panic / Cierre temporal ── */}
+      <div className={cn(
+        "w-full rounded-2xl border-2 overflow-hidden transition-all duration-300",
+        panicActive
+          ? "border-red-600 bg-red-950/20"
+          : "border-border bg-card"
+      )}>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5">
+          <div className="flex items-center gap-3">
+            {panicActive ? (
+              <DoorClosed className="w-8 h-8 text-red-500 shrink-0" />
+            ) : (
+              <DoorOpen className="w-8 h-8 text-green-500 shrink-0" />
+            )}
+            <div>
+              <p className={cn("text-lg font-bold", panicActive ? "text-red-400" : "text-foreground")}>
+                {panicActive ? "🔴 Local cerrado temporalmente" : "🟢 Local abierto"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {panicActive
+                  ? (() => {
+                      const { nextOpening } = getStoreStatus(false);
+                      return `Próxima apertura: ${nextOpening ?? "según horario"}`;
+                    })()
+                  : "Recibiendo pedidos online con normalidad"
+                }
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={togglePanic}
+            className={cn(
+              buttonVariants({ size: "lg" }),
+              "shrink-0 font-bold gap-2 px-8",
+              panicActive
+                ? "bg-green-600 hover:bg-green-700 text-white"
+                : "bg-red-600 hover:bg-red-700 text-white"
+            )}
+          >
+            {panicActive ? (
+              <><DoorOpen className="w-5 h-5" /> Reabrir local</>
+            ) : (
+              <><DoorClosed className="w-5 h-5" /> Cerrar temporalmente</>
+            )}
+          </button>
+        </div>
+        {panicActive && (
+          <div className="px-5 pb-4 text-xs text-red-400/80 border-t border-red-800/30 pt-3">
+            ⚠️ Los clientes ven el aviso de cierre en toda la web y no pueden hacer pedidos.
+          </div>
         )}
-      >
-        <Zap className="w-5 h-5" />
-        {panicActive ? "🔴 LOCAL CERRADO — Toca para reabrir" : "🟢 Local Abierto — Toca para cerrar temporalmente"}
-      </button>
+      </div>
 
       {/* ── Kanban columns ── */}
       <div className="grid md:grid-cols-3 gap-4">
@@ -378,30 +421,44 @@ export function AdminDashboard() {
       </div>
 
       {/* ── Stock panel ── */}
-      <details className="bg-card border rounded-xl overflow-hidden">
-        <summary className="px-5 py-4 font-bold cursor-pointer flex items-center gap-2 select-none">
-          <ShoppingBag className="w-5 h-5" /> Control de Stock
-        </summary>
-        <div className="px-5 pb-5 grid gap-2 sm:grid-cols-2">
+      <section className="bg-card border rounded-xl overflow-hidden shadow-sm">
+        <div className="px-5 py-4 border-b bg-muted/30 flex items-center justify-between">
+          <div className="flex items-center gap-2 font-bold">
+            <ShoppingBag className="w-5 h-5 text-primary" /> 
+            Control de Disponibilidad (Stock)
+          </div>
+          <span className="text-xs text-muted-foreground bg-background px-2 py-1 rounded-md border">
+            {DISHES.length} platos
+          </span>
+        </div>
+        <div className="p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {DISHES.map(dish => (
-            <div key={dish.id} className="flex items-center justify-between gap-2 py-1">
-              <span className="text-sm">{dish.nameEs}</span>
+            <div key={dish.id} className="flex items-center justify-between gap-4 p-3 rounded-xl border bg-background/50 hover:bg-background transition-colors">
+              <div className="min-w-0">
+                <p className="text-sm font-bold truncate">{dish.nameEs}</p>
+                <p className="text-[10px] text-muted-foreground uppercase">{dish.category}</p>
+              </div>
               <button
                 onClick={() => toggleStock(dish.id)}
                 className={cn(
-                  buttonVariants({ size: "sm" }),
-                  "text-xs shrink-0",
-                  outOfStock[dish.id]
-                    ? "bg-red-100 text-red-700 hover:bg-red-200 border-red-300 dark:bg-red-950 dark:text-red-400"
-                    : "bg-green-100 text-green-700 hover:bg-green-200 border-green-300 dark:bg-green-950 dark:text-green-400"
+                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                  outOfStock[dish.id] ? "bg-muted" : "bg-green-600"
                 )}
+                role="switch"
+                aria-checked={!outOfStock[dish.id]}
               >
-                {outOfStock[dish.id] ? "❌ Agotado" : "✅ Disponible"}
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                    outOfStock[dish.id] ? "translate-x-0" : "translate-x-5"
+                  )}
+                />
               </button>
             </div>
           ))}
         </div>
-      </details>
+      </section>
     </div>
   );
 }

@@ -29,7 +29,7 @@ https://glovoapp.com/es/es/granada/stores/de-aqui-y-de-alla-comida-para-llevar-g
    Luego abre: http://127.0.0.1:3286 en tu navegador.
 
 ================================================================================
-4. [PENDIENTE] SISTEMA DE REGISTRO DE CLIENTES
+4. [COMPLETADO] SISTEMA DE REGISTRO DE CLIENTES
    -----------------------------------------
    Implementar formulario de registro para capturar:
    - Nombre completo.
