@@ -30,6 +30,18 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
+  // Lock body scroll when menu is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [open]);
+
   const navItems = [
     { href: "/about", label: t("navAbout"), icon: Users },
     { href: "/contact", label: t("navContact"), icon: Mail },
@@ -44,43 +56,43 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="md:hidden"
+        className="lg:hidden"
         onClick={() => setOpen(true)}
         aria-label="Abrir menú"
       >
         <Menu className="h-6 w-6" />
       </Button>
 
-      {/* Overlay */}
+      {/* Overlay: Higher opacity and blur */}
       {open && (
         <div 
-          className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md lg:hidden"
           onClick={() => setOpen(false)}
         />
       )}
 
-      {/* Side Menu */}
+      {/* Side Menu: Solid background, better shadow */}
       <div
         className={cn(
-          "fixed inset-y-0 right-0 z-[101] w-full max-w-xs bg-background p-6 shadow-xl transition-transform duration-300 ease-in-out md:hidden",
+          "fixed inset-y-0 right-0 z-[101] w-full max-w-[280px] bg-white dark:bg-[#0a0a0a] p-6 shadow-2xl border-l border-border/10 transition-all duration-300 ease-in-out lg:hidden flex flex-col",
           open ? "translate-x-0" : "translate-x-full"
         )}
       >
         <div className="flex items-center justify-between mb-8">
-          <span className="text-lg font-bold text-[#c8102e]">{t("brand")}</span>
-          <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
+          <span className="text-xl font-black text-[#c8102e] tracking-tight">{t("brand")}</span>
+          <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="rounded-full hover:bg-muted">
             <X className="h-6 w-6" />
           </Button>
         </div>
 
-        <nav className="space-y-1">
+        <nav className="space-y-2">
           {/* Main items (even if they are visible in header, it's good to have them here too for redundancy) */}
           <Link
             href="/"
             onClick={() => setOpen(false)}
             className={cn(
-              "flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold transition-colors",
-              pathname === "/" ? "bg-[#c8102e]/10 text-[#c8102e]" : "hover:bg-muted"
+              "flex items-center gap-4 px-4 py-4 rounded-2xl text-base font-bold transition-all",
+              pathname === "/" ? "bg-[#c8102e] text-white shadow-lg shadow-[#c8102e]/20" : "hover:bg-muted"
             )}
           >
             <Home className="h-5 w-5" /> {t("navHome")}
@@ -89,8 +101,8 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
             href="/menu"
             onClick={() => setOpen(false)}
             className={cn(
-              "flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold transition-colors",
-              pathname.includes("/menu") ? "bg-[#c8102e]/10 text-[#c8102e]" : "hover:bg-muted"
+              "flex items-center gap-4 px-4 py-4 rounded-2xl text-base font-bold transition-all",
+              pathname.includes("/menu") ? "bg-[#c8102e] text-white shadow-lg shadow-[#c8102e]/20" : "hover:bg-muted"
             )}
           >
             <UtensilsCrossed className="h-5 w-5" /> {t("navMenu")}
@@ -99,14 +111,14 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
             href="/profile"
             onClick={() => setOpen(false)}
             className={cn(
-              "flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold transition-colors",
-              pathname.includes("/profile") ? "bg-[#c8102e]/10 text-[#c8102e]" : "hover:bg-muted"
+              "flex items-center gap-4 px-4 py-4 rounded-2xl text-base font-bold transition-all",
+              pathname.includes("/profile") ? "bg-[#c8102e] text-white shadow-lg shadow-[#c8102e]/20" : "hover:bg-muted"
             )}
           >
             <User className="h-5 w-5" /> {t("navProfile")}
           </Link>
 
-          <div className="h-px bg-border/50 my-4" />
+          <div className="h-px bg-border/50 my-4 mx-2" />
 
           {/* Secondary items (the ones that go into the hamburger) */}
           {navItems.map((item) => (
@@ -115,35 +127,35 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
               href={item.href}
               onClick={() => setOpen(false)}
               className={cn(
-                "flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold transition-colors",
-                pathname.includes(item.href) ? "bg-[#c8102e]/10 text-[#c8102e]" : "hover:bg-muted"
+                "flex items-center gap-4 px-4 py-4 rounded-2xl text-base font-bold transition-all",
+                pathname.includes(item.href) ? "bg-[#c8102e] text-white shadow-lg shadow-[#c8102e]/20" : "hover:bg-muted"
               )}
             >
-              <item.icon className={cn("h-5 w-5", item.href === "/admin" && "text-amber-500")} />
+              <item.icon className={cn("h-5 w-5", item.href === "/admin" && !pathname.includes("/admin") && "text-amber-500")} />
               {item.label}
             </Link>
           ))}
         </nav>
 
         {/* Contact info in menu */}
-        <div className="mt-auto pt-8 space-y-4">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3">Contacto Directo</p>
-          <div className="grid grid-cols-2 gap-2">
+        <div className="mt-auto pt-8 border-t border-border/50 space-y-4">
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Atención al Cliente</p>
+          <div className="grid grid-cols-2 gap-3">
             <a 
               href={`tel:${BRAND_INFO.phone.replace(/\s/g, '')}`}
-              className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/50 text-center hover:bg-muted transition-colors"
+              className="flex flex-col items-center gap-2 p-5 rounded-2xl bg-muted/30 text-center hover:bg-[#ffc244] hover:text-black transition-all"
             >
-              <Phone className="h-5 w-5 text-[#c8102e]" />
-              <span className="text-xs font-bold">Llamar</span>
+              <Phone className="h-6 w-6 text-[#c8102e]" />
+              <span className="text-xs font-black">Llamar</span>
             </a>
             <a 
               href={BRAND_INFO.whatsapp}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/50 text-center hover:bg-muted transition-colors"
+              className="flex flex-col items-center gap-2 p-5 rounded-2xl bg-muted/30 text-center hover:bg-[#25D366] hover:text-white transition-all"
             >
-              <MessageCircle className="h-5 w-5 text-[#25D366]" />
-              <span className="text-xs font-bold">WhatsApp</span>
+              <MessageCircle className="h-6 w-6 text-[#25D366]" />
+              <span className="text-xs font-black">WhatsApp</span>
             </a>
           </div>
         </div>
