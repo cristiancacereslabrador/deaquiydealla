@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/service";
-import { redirect } from "@/i18n/navigation";
+import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { LogOut, User as UserIcon } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -19,7 +19,7 @@ export default async function ProfilePage({
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect({ href: "/login", locale });
+    redirect(`/${locale}/login`);
   }
 
   // Usar cliente de servicio para saltar RLS y leer todos los campos del perfil
