@@ -92,11 +92,12 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
             }}
           />
 
-          {/* Panel lateral: fondo SÓLIDO mediante estilos inline */}
+          {/* Panel lateral: usa bg-card que está garantizado en producción */}
           <div
             role="dialog"
             aria-modal="true"
             aria-label="Menú principal"
+            className="bg-card"
             style={{
               position: "fixed",
               top: 0,
@@ -106,9 +107,9 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
               width: "min(85vw, 300px)",
               display: "flex",
               flexDirection: "column",
-              backgroundColor: "var(--background, #fff)",
-              boxShadow: "-4px 0 40px rgba(0,0,0,0.25)",
+              boxShadow: "-8px 0 40px rgba(0,0,0,0.35)",
               overflowY: "auto",
+              borderLeft: "1px solid rgba(0,0,0,0.1)",
             }}
           >
             {/* Cabecera del panel */}
