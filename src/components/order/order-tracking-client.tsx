@@ -151,7 +151,7 @@ export function OrderTrackingClient({ orderId }: OrderTrackingClientProps) {
                 >
                   <MapPin className="w-4 h-4" /> Ver dirección en Google Maps
                 </a>
-                <Link href="/info" className="text-xs text-muted-foreground underline">
+                <Link href="/contact" className="text-xs text-muted-foreground underline">
                   Ver más información del local
                 </Link>
               </div>

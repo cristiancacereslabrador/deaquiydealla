@@ -2,7 +2,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-import { ChevronRight, Clock, MapPin, Phone, Truck, Smile } from "lucide-react";
+import { ChevronRight, Clock, MapPin, Phone, Truck, Smile, ExternalLink } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { getTranslations } from "next-intl/server";
 import { BRAND_INFO } from "@/lib/brand";
@@ -259,6 +259,18 @@ export default async function HomePage() {
               </div>
             );
           })()}
+
+          <div className="mt-12 text-center">
+            <a 
+              href="https://maps.app.goo.gl/EJBP3AiC65QQcpUV7" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-[#c8102e] font-bold hover:text-[#a00c24] hover:bg-muted/50 group text-sm sm:text-base px-8 py-4 rounded-2xl bg-white dark:bg-[#1a1a1a] shadow-sm border border-border/40 transition-all duration-300"
+            >
+              <span>{t("reviewsMore")}</span>
+              <ExternalLink className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+            </a>
+          </div>
         </div>
       </section>
 
