@@ -53,6 +53,7 @@ export async function SiteHeader() {
               src="/images/logo.png" 
               alt="De Aquí y De Allá" 
               fill 
+              sizes="(max-width: 640px) 112px, (max-width: 1024px) 160px, 176px"
               className="object-contain"
               priority
             />
@@ -109,10 +110,8 @@ export async function SiteHeader() {
             <ThemeToggle />
           </div>
 
-          {/* HAMBURGER MENU: Only visible below MD breakpoint */}
-          <div className="md:hidden">
-            <MobileMenu user={user} isAdmin={isAdmin} />
-          </div>
+          {/* HAMBURGER MENU: Only visible below MD breakpoint (button inside already has md:hidden) */}
+          <MobileMenu user={user} isAdmin={isAdmin} />
 
           {/* CONTACT DROPDOWN: Only on MD and up */}
           <div className="hidden md:block shrink-0">

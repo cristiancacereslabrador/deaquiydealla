@@ -254,7 +254,7 @@ export function CartView() {
             {suggestedDishes.map(dish => (
               <div key={dish.id} className="flex items-center gap-3 bg-background p-2.5 rounded-xl border shadow-sm overflow-hidden">
                 <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-muted shrink-0">
-                  <Image src={dish.imageUrl} alt={dish.nameEs} fill className="object-cover" />
+                  <Image src={dish.imageUrl} alt={dish.nameEs} fill sizes="56px" className="object-cover" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="font-bold text-sm truncate leading-tight">{locale === "en" ? dish.nameEn : dish.nameEs}</h4>
