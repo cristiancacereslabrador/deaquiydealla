@@ -7,14 +7,19 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
   const t = await getTranslations("Profile");
   const ta = await getTranslations("Auth");
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect({ href: "/login", locale });
   }
 
   // Usar cliente de servicio para saltar RLS y leer todos los campos del perfil
