@@ -93,13 +93,14 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
               position: "absolute",
               top: 0,
               right: 0,
-              bottom: 0,
               width: "min(85vw, 300px)",
+              maxHeight: "90vh",
               backgroundColor: "#ffffff",
               display: "flex",
               flexDirection: "column",
-              boxShadow: "-8px 0 48px rgba(0,0,0,0.3)",
+              boxShadow: "-12px 12px 60px rgba(0,0,0,0.28), -4px 4px 16px rgba(0,0,0,0.12)",
               overflowY: "auto",
+              borderRadius: "0 0 0 24px",
             }}
           >
             {/* Cabecera */}
