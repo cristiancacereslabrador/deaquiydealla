@@ -20,6 +20,7 @@ export default async function ProfilePage({
 
   if (!user) {
     redirect(`/${locale}/login`);
+    return null;
   }
 
   // Usar cliente de servicio para saltar RLS y leer todos los campos del perfil
