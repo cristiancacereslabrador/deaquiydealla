@@ -60,7 +60,7 @@ export async function SiteHeader() {
         </Link>
 
         {/* NAVIGATION (CENTER) */}
-        <nav className="flex flex-1 items-center justify-center gap-1.5 sm:gap-4 md:gap-6 text-[11px] sm:text-xs md:text-sm lg:text-[15px] font-bold text-foreground/80 overflow-hidden px-2">
+        <nav className="flex flex-1 items-center justify-center gap-1.5 sm:gap-4 md:gap-5 lg:gap-6 text-[11px] sm:text-xs md:text-sm lg:text-[15px] font-bold text-foreground/80 overflow-hidden px-2">
           {/* ALWAYS VISIBLE: Inicio, Carta */}
           <Link href="/" className={cn(navLinkClass, "text-[#c8102e]")}>
             <Home className="size-4 hidden xs:block" />
@@ -71,23 +71,23 @@ export async function SiteHeader() {
             <span>{t("navMenu")}</span>
           </Link>
           
-          {/* DESKTOP ONLY (HIDDEN ON MOBILE/TABLET) */}
-          <Link href="/about" className={cn(navLinkClass, "hidden lg:flex")}>
+          {/* VISIBLE ON TABLETS AND DESKTOP (MD+) */}
+          <Link href="/about" className={cn(navLinkClass, "hidden md:flex")}>
             {t("navAbout")}
           </Link>
-          <Link href="/contact" className={cn(navLinkClass, "hidden lg:flex")}>
+          <Link href="/contact" className={cn(navLinkClass, "hidden md:flex")}>
             {t("navContact")}
           </Link>
 
           {/* ALWAYS VISIBLE: Mi Cuenta */}
           {user ? (
-            <div className="flex items-center gap-1.5 sm:gap-4 md:gap-6 border-l pl-2 sm:pl-4 border-border/40">
+            <div className="flex items-center gap-1.5 sm:gap-4 md:gap-5 lg:gap-6 border-l pl-2 sm:pl-4 border-border/40">
               <Link href="/profile" className={cn(navLinkClass, "text-[#c8102e]")}>
                 <User className="size-4 hidden xs:block" />
                 <span>{t("navProfile")}</span>
               </Link>
               {isAdmin && (
-                <Link href="/admin" className={cn(navLinkClass, "text-[#c8102e] animate-pulse hidden lg:flex")}>
+                <Link href="/admin" className={cn(navLinkClass, "text-[#c8102e] animate-pulse hidden md:flex")}>
                   <Zap className="w-4 h-4" /> {t("navAdmin") || "Admin"}
                 </Link>
               )}
@@ -109,18 +109,18 @@ export async function SiteHeader() {
             <ThemeToggle />
           </div>
 
-          {/* HAMBURGER MENU: Only visible below LG breakpoint */}
-          <div className="lg:hidden">
+          {/* HAMBURGER MENU: Only visible below MD breakpoint */}
+          <div className="md:hidden">
             <MobileMenu user={user} isAdmin={isAdmin} />
           </div>
 
-          {/* CONTACT DROPDOWN: Only on LG and up */}
-          <div className="hidden lg:block">
+          {/* CONTACT DROPDOWN: Only on MD and up */}
+          <div className="hidden md:block shrink-0">
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-2 bg-[#c8102e] text-white px-4 py-2 rounded-xl font-bold hover:bg-[#a00c24] transition-colors text-sm">
-                <Phone className="w-4 h-4" />
+              <DropdownMenuTrigger className="flex items-center gap-2 bg-[#c8102e] text-white px-3 lg:px-4 py-2 rounded-xl font-bold hover:bg-[#a00c24] transition-colors text-xs lg:text-sm">
+                <Phone className="w-3.5 h-3.5 lg:w-4 h-4" />
                 <div className="flex flex-col items-start leading-none text-left">
-                  <span className="text-[9px] uppercase opacity-90">{t("contactTrigger")}</span>
+                  <span className="text-[8px] lg:text-[9px] uppercase opacity-90">{t("contactTrigger")}</span>
                   <span>{BRAND_INFO.phone}</span>
                 </div>
               </DropdownMenuTrigger>

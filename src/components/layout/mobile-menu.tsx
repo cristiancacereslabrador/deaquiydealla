@@ -56,7 +56,7 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="lg:hidden"
+        className="md:hidden"
         onClick={() => setOpen(true)}
         aria-label="Abrir menú"
       >
@@ -66,7 +66,7 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
       {/* Overlay: Higher opacity and blur */}
       {open && (
         <div 
-          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md lg:hidden"
+          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md md:hidden"
           onClick={() => setOpen(false)}
         />
       )}
@@ -74,8 +74,8 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
       {/* Side Menu: Solid background, better shadow */}
       <div
         className={cn(
-          "fixed inset-y-0 right-0 z-[101] w-full max-w-[280px] bg-white dark:bg-[#0a0a0a] p-6 shadow-2xl border-l border-border/10 transition-all duration-300 ease-in-out lg:hidden flex flex-col",
-          open ? "translate-x-0" : "translate-x-full"
+          "fixed inset-y-0 right-0 z-[101] w-full max-w-[280px] bg-white dark:bg-[#0a0a0a] p-6 shadow-2xl border-l border-border/10 transition-all duration-300 ease-in-out md:hidden flex flex-col",
+          open ? "translate-x-0 opacity-100 visible" : "translate-x-full opacity-0 invisible pointer-events-none"
         )}
       >
         <div className="flex items-center justify-between mb-8">
