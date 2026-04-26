@@ -3,125 +3,177 @@
 import { useState, useEffect } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { 
-  Menu, 
-  X, 
-  Home, 
-  UtensilsCrossed, 
-  Users, 
-  Mail, 
-  User, 
+import {
+  Menu,
+  X,
+  Home,
+  UtensilsCrossed,
+  Users,
+  Mail,
+  User,
   Zap,
   Phone,
-  MessageCircle
+  MessageCircle,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { BRAND_INFO } from "@/lib/brand";
 import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { useTranslations } from "next-intl";
 
 interface MobileMenuProps {
-  user: any;
+  /** Usuario autenticado (null si no hay sesión) */
+  user: { id: string } | null;
+  /** True si el usuario es administrador */
   isAdmin: boolean;
 }
 
+/**
+ * Menú lateral para dispositivos móviles (< md breakpoint).
+ * Renderiza el botón hamburguesa y el panel deslizante.
+ * El panel usa estilos inline para garantizar el fondo sólido
+ * independientemente de cómo Tailwind purgue las clases.
+ */
 export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
   const t = useTranslations("Shell");
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  // Lock body scroll when menu is open
+  // Bloquear scroll del body cuando el menú está abierto
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
   }, [open]);
 
+  // Cerrar el menú cuando cambia la ruta
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // Construcción dinámica de los ítems de navegación
   const navItems = [
-    { href: "/", label: t("navHome"), icon: Home },
-    { href: "/menu", label: t("navMenu"), icon: UtensilsCrossed },
+    { href: "/",        label: t("navHome"),    icon: Home },
+    { href: "/menu",    label: t("navMenu"),    icon: UtensilsCrossed },
     ...(user
       ? [{ href: "/profile", label: t("navProfile"), icon: User }]
-      : [{ href: "/login", label: t("navLogin"), icon: User }]),
-    { href: "/about", label: t("navAbout"), icon: Users },
+      : [{ href: "/login",   label: t("navLogin"),   icon: User }]
+    ),
+    { href: "/about",   label: t("navAbout"),   icon: Users },
     { href: "/contact", label: t("navContact"), icon: Mail },
-    ...(isAdmin ? [{ href: "/admin", label: t("navAdmin") || "Admin", icon: Zap }] : []),
+    ...(isAdmin
+      ? [{ href: "/admin", label: t("navAdmin") ?? "Admin", icon: Zap }]
+      : []
+    ),
   ];
 
   return (
     <>
-      {/* Botón hamburguesa – solo en móvil (< md) */}
-      <Button
-        variant="outline"
-        size="icon"
-        className="md:hidden h-11 w-11 rounded-xl shadow-md border-border/50 bg-white dark:bg-muted/50 hover:bg-[#c8102e]/10 active:scale-95 transition-all"
+      {/* ─── BOTÓN HAMBURGUESA (solo visible en móvil < md) ─── */}
+      <button
+        type="button"
         onClick={() => setOpen(true)}
-        aria-label="Abrir menú"
+        aria-label="Abrir menú de navegación"
+        className="md:hidden flex items-center justify-center h-11 w-11 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md bg-white dark:bg-gray-800 text-[#c8102e] hover:bg-red-50 active:scale-95 transition-all"
       >
-        <Menu className="h-6 w-6 text-[#c8102e]" />
-      </Button>
+        <Menu className="h-6 w-6" />
+      </button>
 
-      {/* Solo renderizar overlay y panel cuando está abierto */}
+      {/* ─── PORTAL DEL MENÚ (solo renderizado cuando está abierto) ─── */}
       {open && (
         <>
-          {/* Overlay oscuro semitransparente */}
+          {/* Overlay: fondo oscuro para cubrir la página */}
           <div
-            className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
             aria-hidden="true"
+            onClick={() => setOpen(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 200,
+              backgroundColor: "rgba(0,0,0,0.7)",
+            }}
           />
 
-          {/* Panel lateral — fondo SÓLIDO, sin transparencia */}
+          {/* Panel lateral: fondo SÓLIDO mediante estilos inline */}
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Menú de navegación"
-            className="fixed inset-y-0 right-0 z-[101] w-[85vw] max-w-[300px] bg-[#fdfbf7] dark:bg-[#111] shadow-2xl flex flex-col"
+            aria-label="Menú principal"
+            style={{
+              position: "fixed",
+              top: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 201,
+              width: "min(85vw, 300px)",
+              display: "flex",
+              flexDirection: "column",
+              backgroundColor: "var(--background, #fff)",
+              boxShadow: "-4px 0 40px rgba(0,0,0,0.25)",
+              overflowY: "auto",
+            }}
           >
             {/* Cabecera del panel */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border/40">
-              <span className="text-xl font-black text-[#c8102e] tracking-tight">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "16px 20px",
+                borderBottom: "1px solid rgba(0,0,0,0.08)",
+              }}
+            >
+              <span style={{ fontSize: 20, fontWeight: 900, color: "#c8102e", letterSpacing: -0.5 }}>
                 {t("brand")}
               </span>
-              <Button
-                variant="ghost"
-                size="icon"
+              <button
+                type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-full hover:bg-muted"
+                aria-label="Cerrar menú"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  color: "currentColor",
+                }}
               >
                 <X className="h-6 w-6" />
-              </Button>
+              </button>
             </div>
 
             {/* Navegación */}
-            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+            <nav style={{ flex: 1, padding: "12px 12px 0" }}>
               {navItems.map((item) => {
                 const isActive =
-                  item.href === "/"
-                    ? pathname === "/"
-                    : pathname.startsWith(item.href);
+                  item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setOpen(false)}
-                    className={cn(
-                      "flex items-center gap-4 px-4 py-3.5 rounded-2xl text-base font-bold transition-all",
-                      isActive
-                        ? "bg-[#c8102e] text-white shadow-lg shadow-[#c8102e]/20"
-                        : "hover:bg-muted text-foreground"
-                    )}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "14px 16px",
+                      borderRadius: 16,
+                      marginBottom: 4,
+                      fontWeight: 700,
+                      fontSize: 16,
+                      textDecoration: "none",
+                      color: isActive ? "#fff" : "currentColor",
+                      backgroundColor: isActive ? "#c8102e" : "transparent",
+                      transition: "background 0.15s",
+                    }}
                   >
                     <item.icon
                       className={cn(
                         "h-5 w-5 shrink-0",
-                        item.href === "/admin" && !isActive && "text-amber-500"
+                        !isActive && item.href === "/admin" && "text-amber-500"
                       )}
                     />
                     {item.label}
@@ -130,24 +182,45 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
               })}
             </nav>
 
-            {/* Footer: Tema, Idioma y Contacto rápido */}
-            <div className="border-t border-border/40 px-5 py-4 space-y-4">
+            {/* Footer con Preferencias y Contacto rápido */}
+            <div
+              style={{
+                borderTop: "1px solid rgba(0,0,0,0.08)",
+                padding: "16px 20px 20px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+              }}
+            >
               {/* Tema e Idioma */}
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.5 }}>
                   Preferencias
                 </span>
-                <div className="flex items-center gap-2">
+                <div style={{ display: "flex", gap: 8 }}>
                   <LocaleSwitcher />
                   <ThemeToggle />
                 </div>
               </div>
 
-              {/* Contacto rápido */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Llamar & WhatsApp */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <a
                   href={`tel:${BRAND_INFO.phone.replace(/\s/g, "")}`}
-                  className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-muted/50 hover:bg-[#ffc244] hover:text-black transition-all font-bold text-sm"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    padding: "12px",
+                    borderRadius: 14,
+                    fontWeight: 700,
+                    fontSize: 14,
+                    textDecoration: "none",
+                    backgroundColor: "rgba(0,0,0,0.05)",
+                    color: "currentColor",
+                    transition: "background 0.15s",
+                  }}
                 >
                   <Phone className="h-4 w-4 text-[#c8102e]" />
                   Llamar
@@ -156,7 +229,20 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
                   href={BRAND_INFO.whatsapp}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-muted/50 hover:bg-[#25D366] hover:text-white transition-all font-bold text-sm"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    padding: "12px",
+                    borderRadius: 14,
+                    fontWeight: 700,
+                    fontSize: 14,
+                    textDecoration: "none",
+                    backgroundColor: "rgba(0,0,0,0.05)",
+                    color: "currentColor",
+                    transition: "background 0.15s",
+                  }}
                 >
                   <MessageCircle className="h-4 w-4 text-[#25D366]" />
                   WhatsApp
