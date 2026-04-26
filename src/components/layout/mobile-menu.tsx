@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -21,35 +22,38 @@ import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { useTranslations } from "next-intl";
 
 interface MobileMenuProps {
-  /** Usuario autenticado (null si no hay sesión) */
   user: { id: string } | null;
-  /** True si el usuario es administrador */
   isAdmin: boolean;
 }
 
 /**
- * Menú lateral para dispositivos móviles (< md breakpoint).
- * Renderiza el botón hamburguesa y el panel deslizante.
- * El panel usa estilos inline para garantizar el fondo sólido
- * independientemente de cómo Tailwind purgue las clases.
+ * Menú lateral para móvil.
+ * Usa createPortal para renderizar el overlay y el panel FUERA del <header>,
+ * evitando que el backdrop-filter del header cree un nuevo containing block
+ * que atrape los elementos position:fixed dentro de él.
  */
 export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
   const t = useTranslations("Shell");
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
 
-  // Bloquear scroll del body cuando el menú está abierto
+  // Montar solo en cliente (portal necesita document)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Bloquear scroll cuando el menú está abierto
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
-  // Cerrar el menú cuando cambia la ruta
+  // Cerrar al navegar
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
-  // Construcción dinámica de los ítems de navegación
   const navItems = [
     { href: "/",        label: t("navHome"),    icon: Home },
     { href: "/menu",    label: t("navMenu"),    icon: UtensilsCrossed },
@@ -65,55 +69,40 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
     ),
   ];
 
-  return (
-    <>
-      {/* ─── BOTÓN HAMBURGUESA (solo visible en móvil < md) ─── */}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Abrir menú de navegación"
-        className="md:hidden flex items-center justify-center h-11 w-11 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md bg-white dark:bg-gray-800 text-[#c8102e] hover:bg-red-50 active:scale-95 transition-all"
-      >
-        <Menu className="h-6 w-6" />
-      </button>
-
-      {/* ─── PORTAL DEL MENÚ (solo renderizado cuando está abierto) ─── */}
-      {open && (
-        <>
-          {/* Overlay: fondo oscuro para cubrir la página */}
+  // Panel y overlay que se renderizan fuera del header mediante Portal
+  const menuPortal = mounted && open
+    ? createPortal(
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999 }}>
+          {/* Overlay oscuro */}
           <div
             aria-hidden="true"
             onClick={() => setOpen(false)}
             style={{
-              position: "fixed",
+              position: "absolute",
               inset: 0,
-              zIndex: 200,
-              backgroundColor: "rgba(0,0,0,0.7)",
+              backgroundColor: "rgba(0,0,0,0.65)",
             }}
           />
 
-          {/* Panel lateral */}
+          {/* Panel lateral con fondo BLANCO sólido */}
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Menú principal"
-            className="mobile-menu-panel"
+            aria-label="Menú de navegación"
             style={{
-              position: "fixed",
+              position: "absolute",
               top: 0,
               right: 0,
               bottom: 0,
-              zIndex: 201,
               width: "min(85vw, 300px)",
+              backgroundColor: "#ffffff",
               display: "flex",
               flexDirection: "column",
-              boxShadow: "-8px 0 40px rgba(0,0,0,0.35)",
+              boxShadow: "-8px 0 48px rgba(0,0,0,0.3)",
               overflowY: "auto",
-              borderLeft: "1px solid rgba(0,0,0,0.1)",
-              backgroundColor: "#ffffff",
             }}
           >
-            {/* Cabecera del panel */}
+            {/* Cabecera */}
             <div
               style={{
                 display: "flex",
@@ -131,24 +120,18 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
                 onClick={() => setOpen(false)}
                 aria-label="Cerrar menú"
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 40,
-                  height: 40,
-                  borderRadius: "50%",
-                  border: "none",
-                  background: "transparent",
-                  cursor: "pointer",
-                  color: "currentColor",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: 40, height: 40, borderRadius: "50%",
+                  border: "none", background: "transparent",
+                  cursor: "pointer", fontSize: 0,
                 }}
               >
-                <X className="h-6 w-6" />
+                <X style={{ width: 24, height: 24 }} />
               </button>
             </div>
 
             {/* Navegación */}
-            <nav style={{ flex: 1, padding: "12px 12px 0" }}>
+            <nav style={{ flex: 1, padding: "12px" }}>
               {navItems.map((item) => {
                 const isActive =
                   item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -167,16 +150,13 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
                       fontWeight: 700,
                       fontSize: 16,
                       textDecoration: "none",
-                      color: isActive ? "#fff" : "currentColor",
+                      color: isActive ? "#ffffff" : "#1a1a1a",
                       backgroundColor: isActive ? "#c8102e" : "transparent",
-                      transition: "background 0.15s",
                     }}
                   >
                     <item.icon
-                      className={cn(
-                        "h-5 w-5 shrink-0",
-                        !isActive && item.href === "/admin" && "text-amber-500"
-                      )}
+                      style={{ width: 20, height: 20, flexShrink: 0 }}
+                      className={cn(!isActive && item.href === "/admin" && "text-amber-500")}
                     />
                     {item.label}
                   </Link>
@@ -184,19 +164,16 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
               })}
             </nav>
 
-            {/* Footer con Preferencias y Contacto rápido */}
+            {/* Footer: Preferencias y Contacto */}
             <div
               style={{
                 borderTop: "1px solid rgba(0,0,0,0.08)",
-                padding: "16px 20px 20px",
-                display: "flex",
-                flexDirection: "column",
-                gap: 12,
+                padding: "16px 20px 24px",
               }}
             >
-              {/* Tema e Idioma */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.5 }}>
+              {/* Idioma y Tema */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.5, color: "#1a1a1a" }}>
                   Preferencias
                 </span>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -210,21 +187,14 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
                 <a
                   href={`tel:${BRAND_INFO.phone.replace(/\s/g, "")}`}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    padding: "12px",
-                    borderRadius: 14,
-                    fontWeight: 700,
-                    fontSize: 14,
-                    textDecoration: "none",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    gap: 8, padding: 12, borderRadius: 14,
+                    fontWeight: 700, fontSize: 14,
+                    textDecoration: "none", color: "#1a1a1a",
                     backgroundColor: "rgba(0,0,0,0.05)",
-                    color: "currentColor",
-                    transition: "background 0.15s",
                   }}
                 >
-                  <Phone className="h-4 w-4 text-[#c8102e]" />
+                  <Phone style={{ width: 16, height: 16, color: "#c8102e" }} />
                   Llamar
                 </a>
                 <a
@@ -232,28 +202,38 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    padding: "12px",
-                    borderRadius: 14,
-                    fontWeight: 700,
-                    fontSize: 14,
-                    textDecoration: "none",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    gap: 8, padding: 12, borderRadius: 14,
+                    fontWeight: 700, fontSize: 14,
+                    textDecoration: "none", color: "#1a1a1a",
                     backgroundColor: "rgba(0,0,0,0.05)",
-                    color: "currentColor",
-                    transition: "background 0.15s",
                   }}
                 >
-                  <MessageCircle className="h-4 w-4 text-[#25D366]" />
+                  <MessageCircle style={{ width: 16, height: 16, color: "#25D366" }} />
                   WhatsApp
                 </a>
               </div>
             </div>
           </div>
-        </>
-      )}
+        </div>,
+        document.body
+      )
+    : null;
+
+  return (
+    <>
+      {/* Botón hamburguesa */}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Abrir menú"
+        className="md:hidden flex items-center justify-center h-11 w-11 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md bg-white dark:bg-gray-800 hover:bg-red-50 active:scale-95 transition-all"
+      >
+        <Menu className="h-6 w-6 text-[#c8102e]" />
+      </button>
+
+      {/* Portal: se monta directamente en document.body */}
+      {menuPortal}
     </>
   );
 }
