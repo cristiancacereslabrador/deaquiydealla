@@ -27,6 +27,7 @@ export const metadata: Metadata = {
   ),
   title: RESTAURANT_BRAND_NAME,
   description: `Restaurante ${RESTAURANT_BRAND_NAME} — cocina china y latina en Granada.`,
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
