@@ -101,7 +101,7 @@ export async function SiteHeader() {
         </nav>
 
         {/* ACTIONS (RIGHT) */}
-        <div className="flex items-center gap-1 sm:gap-3">
+        <div className="flex items-center gap-3 sm:gap-5 ml-2">
           <CartNavLink />
           
           <div className="hidden sm:flex items-center gap-1 border-l pl-2 border-border/40">

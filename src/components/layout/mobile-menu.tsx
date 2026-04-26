@@ -54,13 +54,13 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
   return (
     <>
       <Button
-        variant="ghost"
+        variant="outline"
         size="icon"
-        className="md:hidden"
+        className="md:hidden h-11 w-11 rounded-xl shadow-md border-border/50 bg-white dark:bg-muted/50 hover:bg-[#c8102e]/10 active:scale-95 transition-all"
         onClick={() => setOpen(true)}
         aria-label="Abrir menú"
       >
-        <Menu className="h-6 w-6" />
+        <Menu className="h-6 w-6 text-[#c8102e]" />
       </Button>
 
       {/* Overlay: Higher opacity and blur */}
