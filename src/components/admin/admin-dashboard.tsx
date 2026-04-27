@@ -205,6 +205,7 @@ export function AdminDashboard() {
   const [panicActive, setPanicActive] = useState(false);
   const [outOfStock, setOutOfStock] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [combinedDishes, setCombinedDishes] = useState<any[]>([]);
 
   /* ── Initial data load ── */
   useEffect(() => {
@@ -212,9 +213,20 @@ export function AdminDashboard() {
       supabase.from("pedidos").select("*").order("created_at", { ascending: true }).limit(100),
       supabase.from("store_settings").select("*").eq("id", "panic_button").single(),
       supabase.from("dish_status").select("*"),
-    ]).then(([ordersRes, panicRes, stockRes]) => {
+      supabase.from("custom_dishes").select("*").is("deleted_at", null),
+    ]).then(([ordersRes, panicRes, stockRes, customRes]) => {
       if (ordersRes.data) setOrders(ordersRes.data as Order[]);
       if (panicRes.data?.value?.active) setPanicActive(true);
+      
+      // Combined dishes logic
+      const customDishes = (customRes.data || []).map(d => ({
+        id: d.id,
+        nameEs: d.name_es,
+        category: d.category,
+        isCustom: true
+      }));
+      setCombinedDishes([...DISHES, ...customDishes]);
+
       if (stockRes.data) {
         const map = (stockRes.data as DishStatus[]).reduce((acc, row) => {
           acc[row.dish_id] = !row.is_available;
@@ -428,11 +440,11 @@ export function AdminDashboard() {
             Control de Disponibilidad (Stock)
           </div>
           <span className="text-xs text-muted-foreground bg-background px-2 py-1 rounded-md border">
-            {DISHES.length} platos
+            {combinedDishes.length} platos
           </span>
         </div>
         <div className="p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {DISHES.map(dish => (
+          {combinedDishes.map(dish => (
             <div key={dish.id} className="flex items-center justify-between gap-4 p-3 rounded-xl border bg-background/50 hover:bg-background transition-colors">
               <div className="min-w-0">
                 <p className="text-sm font-bold truncate">{dish.nameEs}</p>

@@ -11,7 +11,7 @@ CREATE TABLE public.ingredients (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Table: dish_ingredients (Escandallos/Recipes)
+-- 2. Table: dish_ingredients (Recetas)
 CREATE TABLE public.dish_ingredients (
   dish_id TEXT NOT NULL, -- Refers to the hardcoded ID in src/data/dishes.ts
   ingredient_id UUID REFERENCES public.ingredients(id) ON DELETE CASCADE,

@@ -42,6 +42,7 @@ export async function SiteFooter() {
                 src="/images/logo.png" 
                 alt={BRAND_INFO.name}
                 fill 
+                sizes="160px"
                 className="object-contain"
               />
             </div>

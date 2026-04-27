@@ -4,7 +4,8 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/service";
 import { PricesDashboard } from "@/components/admin/prices-dashboard";
 import { AddDishDashboard } from "@/components/admin/add-dish-dashboard";
-import { Tag, PlusCircle } from "lucide-react";
+import { CategoriesDashboard } from "@/components/admin/categories-dashboard";
+import { Tag, PlusCircle, Layers } from "lucide-react";
 
 /**
  * @description Página de gestión del catálogo:
@@ -44,6 +45,23 @@ export default async function AdminCatalogPage({
       {/* ── Section 1: Prices ── */}
       <section id="precios">
         <PricesDashboard />
+      </section>
+
+      {/* ── Divider ── */}
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center" aria-hidden="true">
+          <div className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-background px-4 text-xs text-muted-foreground font-semibold uppercase tracking-widest">
+            Categorías
+          </span>
+        </div>
+      </div>
+
+      {/* ── Section 1.5: Categories ── */}
+      <section id="categorias">
+        <CategoriesDashboard />
       </section>
 
       {/* ── Divider ── */}

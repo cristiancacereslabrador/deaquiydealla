@@ -16,10 +16,18 @@ interface DishIngredient {
   quantity_required: number;
 }
 
+interface CombinedDish {
+  id: string;
+  nameEs: string;
+  priceCents: number;
+  isCustom?: boolean;
+}
+
 export function RecipesDashboard() {
   const supabase = createBrowserSupabaseClient();
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [recipes, setRecipes] = useState<DishIngredient[]>([]);
+  const [customDishes, setCustomDishes] = useState<CombinedDish[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedDish, setExpandedDish] = useState<string | null>(null);
 
@@ -27,16 +35,27 @@ export function RecipesDashboard() {
   const [addingToDish, setAddingToDish] = useState<string | null>(null);
   const [selectedIngredientId, setSelectedIngredientId] = useState("");
   const [requiredQty, setRequiredQty] = useState("");
+  const [qtyUnit, setQtyUnit] = useState<"kg" | "g" | "l" | "ml" | "base">("g");
 
   const fetchData = async () => {
     try {
-      const [ingRes, recRes] = await Promise.all([
+      const [ingRes, recRes, customRes] = await Promise.all([
         supabase.from("ingredients").select("*"),
         supabase.from("dish_ingredients").select("*"),
+        supabase.from("custom_dishes").select("id, name_es, price_cents").is("deleted_at", null),
       ]);
       
       if (ingRes.data) setIngredients(ingRes.data as Ingredient[]);
       if (recRes.data) setRecipes(recRes.data as DishIngredient[]);
+      if (customRes.data) {
+        const mapped = customRes.data.map(d => ({
+          id: d.id,
+          nameEs: d.name_es,
+          priceCents: d.price_cents,
+          isCustom: true
+        }));
+        setCustomDishes(mapped);
+      }
     } catch (err) {
       LoggerService.error("RecipesDashboard:fetchData", err);
     } finally {
@@ -53,7 +72,13 @@ export function RecipesDashboard() {
     if (!addingToDish || !selectedIngredientId || !requiredQty) return;
 
     try {
-      const qty = parseFloat(requiredQty);
+      let qty = parseFloat(requiredQty);
+      
+      // Convert to base units (g or ml) if commercial units were selected
+      if (qtyUnit === "kg" || qtyUnit === "l") {
+        qty = qty * 1000;
+      }
+
       const { data, error } = await supabase.from("dish_ingredients").upsert({
         dish_id: addingToDish,
         ingredient_id: selectedIngredientId,
@@ -102,13 +127,13 @@ export function RecipesDashboard() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold font-heading flex items-center gap-2">
-          <ChefHat className="w-6 h-6 text-primary" /> Escandallos (Recetas)
+          <ChefHat className="w-6 h-6 text-primary" /> Recetas
         </h2>
         <p className="text-muted-foreground text-sm">Define qué ingredientes componen cada plato para deducir el stock automáticamente.</p>
       </div>
 
       <div className="space-y-4">
-        {DISHES.map(dish => {
+        {([...DISHES, ...customDishes] as CombinedDish[]).map(dish => {
           const dishRecipes = recipes.filter(r => r.dish_id === dish.id);
           const isExpanded = expandedDish === dish.id;
           
@@ -134,11 +159,14 @@ export function RecipesDashboard() {
                 <div className="flex items-center gap-3">
                   {isExpanded ? <ChevronDown className="w-5 h-5 text-muted-foreground" /> : <ChevronRight className="w-5 h-5 text-muted-foreground" />}
                   <div>
-                    <h3 className="font-bold text-lg">{dish.nameEs}</h3>
+                    <h3 className="font-bold text-lg flex items-center gap-2">
+                      {dish.nameEs}
+                      {dish.isCustom && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded uppercase font-bold">Custom</span>}
+                    </h3>
                     <div className="flex items-center gap-3 text-xs mt-1">
                       <span className="font-semibold text-primary">{formatCentsToCurrency(dish.priceCents, "es")}</span>
                       <span className="text-muted-foreground">
-                        {dishRecipes.length} ingredientes
+                        {dishRecipes.length} {dishRecipes.length === 1 ? "ingrediente" : "ingredientes"}
                       </span>
                     </div>
                   </div>
@@ -172,6 +200,7 @@ export function RecipesDashboard() {
                         <thead className="bg-muted/50 border-b">
                           <tr>
                             <th className="px-3 py-2 font-semibold">Ingrediente</th>
+                            <th className="px-3 py-2 font-semibold">Costo Unit/Comercial</th>
                             <th className="px-3 py-2 font-semibold">Cantidad requerida</th>
                             <th className="px-3 py-2 font-semibold">Costo calc.</th>
                             <th className="px-3 py-2 text-right">Quitar</th>
@@ -185,9 +214,19 @@ export function RecipesDashboard() {
                             
                             return (
                               <tr key={dr.ingredient_id} className="hover:bg-muted/30">
-                                <td className="px-3 py-2 font-medium">{ing.name}</td>
+                                <td className="px-3 py-2">
+                                  <div className="font-medium">{ing.name}</div>
+                                </td>
+                                <td className="px-3 py-2 text-xs text-muted-foreground">
+                                  {formatCentsToCurrency(ing.cost_per_unit_cents, "es")} / {ing.unit}
+                                  {(ing.unit === "g" || ing.unit === "ml") && (
+                                    <div className="text-[10px] text-primary/70">
+                                      ({formatCentsToCurrency(ing.cost_per_unit_cents * 1000, "es")} / {ing.unit === "g" ? "Kg" : "L"})
+                                    </div>
+                                  )}
+                                </td>
                                 <td className="px-3 py-2">{dr.quantity_required} {ing.unit}</td>
-                                <td className="px-3 py-2 text-muted-foreground">{formatCentsToCurrency(cost, "es")}</td>
+                                <td className="px-3 py-2 font-mono">{formatCentsToCurrency(cost, "es")}</td>
                                 <td className="px-3 py-2 text-right">
                                   <button 
                                     onClick={() => removeIngredientFromDish(dish.id, ing.id)}
@@ -222,14 +261,28 @@ export function RecipesDashboard() {
                             ))}
                           </select>
                         </div>
-                        <div className="w-24 space-y-1">
+                        <div className="flex-1 space-y-1 min-w-[120px]">
                           <label className="text-xs font-semibold">Cantidad</label>
-                          <input 
-                            type="number" step="0.01" required 
-                            value={requiredQty} onChange={e => setRequiredQty(e.target.value)}
-                            className="w-full h-9 px-2 rounded border bg-background text-sm text-right"
-                            placeholder="Ej: 150"
-                          />
+                          <div className="flex gap-1">
+                            <input 
+                              type="number" step="0.01" required 
+                              value={requiredQty} onChange={e => setRequiredQty(e.target.value)}
+                              className="flex-1 h-9 px-2 rounded border bg-background text-sm text-right"
+                              placeholder="Ej: 0.5"
+                            />
+                            <select
+                              value={qtyUnit}
+                              onChange={e => setQtyUnit(e.target.value as any)}
+                              className="w-20 h-9 px-1 rounded border bg-muted text-xs font-bold"
+                            >
+                              {(() => {
+                                const ing = ingredients.find(i => i.id === selectedIngredientId);
+                                if (ing?.unit === "g") return <><option value="g">Gramos (g)</option><option value="kg">Kilos (Kg)</option></>;
+                                if (ing?.unit === "ml") return <><option value="ml">ml</option><option value="l">Litros (L)</option></>;
+                                return <option value="base">{ing?.unit || "uds"}</option>;
+                              })()}
+                            </select>
+                          </div>
                         </div>
                         <button type="submit" className={cn(buttonVariants({ size: "sm" }), "h-9")}>Guardar</button>
                         <button type="button" onClick={() => setAddingToDish(null)} className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "h-9")}>Cancelar</button>

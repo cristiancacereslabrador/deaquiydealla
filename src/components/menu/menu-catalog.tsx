@@ -18,14 +18,11 @@ type MenuCatalogProps = {
   dishes: readonly Dish[];
 };
 
-const CATEGORY_KEYS: DishCategory[] = [
-  "entrantes",
-  "combos",
-  "arroces",
-  "vegetales",
-  "tallarines",
-  "otros"
-];
+interface DBCategory {
+  id: string;
+  name_es: string;
+  name_en: string;
+}
 
 /**
  * Catálogo filtrable por categoría con rejilla responsive,
@@ -33,8 +30,9 @@ const CATEGORY_KEYS: DishCategory[] = [
  */
 export function MenuCatalog({ dishes }: MenuCatalogProps) {
   const t = useTranslations("Catalog");
-  const [active, setActive] = useState<DishCategory | "all">("all");
+  const [active, setActive] = useState<string>("all");
   const [outOfStockIds, setOutOfStockIds] = useState<Set<string>>(new Set());
+  const [categories, setCategories] = useState<DBCategory[]>([]);
 
   /** price overrides from Supabase: dish_id → price_cents */
   const [priceOverrides, setPriceOverrides] = useState<Record<string, number>>({});
@@ -44,10 +42,13 @@ export function MenuCatalog({ dishes }: MenuCatalogProps) {
   useEffect(() => {
     // ── 1. Carga inicial: platos agotados + precios override ──
     const fetchInitialData = async () => {
-      const [stockRes, priceRes] = await Promise.all([
+      const [stockRes, priceRes, catRes] = await Promise.all([
         supabase.from("dish_status").select("dish_id").eq("is_available", false),
         supabase.from("dish_price_overrides").select("dish_id, price_cents"),
+        supabase.from("categories").select("id, name_es, name_en").order("sort_order"),
       ]);
+
+      if (catRes.data) setCategories(catRes.data as DBCategory[]);
 
       if (stockRes.data) {
         setOutOfStockIds(new Set(stockRes.data.map((d: { dish_id: string }) => d.dish_id)));
@@ -104,7 +105,6 @@ export function MenuCatalog({ dishes }: MenuCatalogProps) {
 
   /**
    * Merge overrides into dishes so DishCard always shows the current price.
-   * Only static dishes from DISHES are overridden here; custom_dishes have their own price.
    */
   const dishesWithPrices = useMemo((): Dish[] => {
     return dishes.map((d) =>
@@ -121,31 +121,36 @@ export function MenuCatalog({ dishes }: MenuCatalogProps) {
 
   return (
     <div className="space-y-4">
-      {/* Scrollable filter bar – clipped to viewport width, no horizontal overflow */}
-      <div
-        className="sticky top-14 sm:top-16 z-40 bg-background/95 backdrop-blur border-b shadow-sm sm:border-none sm:shadow-none -mx-4 sm:mx-0"
-      >
+      <div className="sticky top-14 sm:top-16 z-40 bg-background/95 backdrop-blur border-b shadow-sm sm:border-none sm:shadow-none -mx-4 sm:mx-0">
         <div
           className="flex gap-2 overflow-x-auto py-3 px-4 sm:px-0 scrollbar-none"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           role="tablist"
           aria-label={t("filterAria")}
         >
-        <FilterChip
-          selected={active === "all"}
-          onClick={() => setActive("all")}
-          label={t("categoryAll")}
-        />
-        {CATEGORY_KEYS.map((key) => (
           <FilterChip
-            key={key}
-            selected={active === key}
-            onClick={() => setActive(key)}
-            label={t(`category.${key}`)}
+            selected={active === "all"}
+            onClick={() => setActive("all")}
+            label={t("categoryAll")}
           />
-        ))}
-        </div>{/* end scrollable inner */}
-      </div>{/* end sticky outer */}
+          {categories.map((cat) => (
+            <FilterChip
+              key={cat.id}
+              selected={active === cat.id}
+              onClick={() => setActive(cat.id)}
+              label={(() => {
+                try {
+                  const translated = t(`category.${cat.id}`);
+                  if (translated === `category.${cat.id}`) return cat.name_es;
+                  return translated;
+                } catch {
+                  return cat.name_es;
+                }
+              })()}
+            />
+          ))}
+        </div>
+      </div>
 
       {filtered.length === 0 ? (
         <p className="text-center text-muted-foreground">{t("empty")}</p>
@@ -165,16 +170,12 @@ export function MenuCatalog({ dishes }: MenuCatalogProps) {
   );
 }
 
-
 type FilterChipProps = {
   selected: boolean;
   onClick: () => void;
   label: string;
 };
 
-/**
- * Chip de filtro accesible para categorías del menú.
- */
 function FilterChip({ selected, onClick, label }: FilterChipProps) {
   return (
     <button
@@ -193,4 +194,3 @@ function FilterChip({ selected, onClick, label }: FilterChipProps) {
     </button>
   );
 }
-

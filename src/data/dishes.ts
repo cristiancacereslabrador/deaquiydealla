@@ -27,7 +27,7 @@ export type Allergen =
  */
 export type Dish = {
   id: string;
-  category: DishCategory;
+  category: string; // Changed from DishCategory to string for dynamic support
   nameEs: string;
   nameEn: string;
   descriptionEs: string;

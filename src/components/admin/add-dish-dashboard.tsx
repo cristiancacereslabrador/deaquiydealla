@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { LoggerService } from "@/lib/logger";
 import { cn } from "@/lib/utils";
@@ -53,15 +53,11 @@ interface FormState {
   allergens: Allergen[];
 }
 
-const CATEGORIES: { value: DishCategory; label: string }[] = [
-  { value: "entrantes", label: "Entrantes" },
-  { value: "combos", label: "Combos Personales" },
-  { value: "arroces", label: "Arroces" },
-  { value: "vegetales", label: "Vegetales al Wok" },
-  { value: "tallarines", label: "Tallarines" },
-  { value: "bebidas", label: "Bebidas" },
-  { value: "otros", label: "Otros" },
-];
+// Dynamic categories will be fetched from the database
+interface Category {
+  id: string;
+  name_es: string;
+}
 
 const ALLERGENS: { value: Allergen; label: string; emoji: string }[] = [
   { value: "gluten", label: "Gluten", emoji: "🌾" },
@@ -130,6 +126,8 @@ export function AddDishDashboard() {
   const supabase = createBrowserSupabaseClient();
 
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -138,6 +136,37 @@ export function AddDishDashboard() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const { data, error } = await supabase.from("categories").select("id, name_es").order("sort_order");
+        if (error) throw error;
+        setCategories(data || []);
+        if (data && data.length > 0) {
+          setForm(p => ({ ...p, category: data[0].id as any }));
+        }
+      } catch (err) {
+        LoggerService.error("AddDishDashboard:loadCategories", err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    loadCategories();
+
+    // ── Realtime: Sync categories ──
+    const channel = supabase
+      .channel("categories-sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "categories" },
+        () => loadCategories() // Re-fetch on any change
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase]);
 
   /* ── Image validation & preview ── */
   const handleImageChange = useCallback((file: File | null) => {
@@ -417,12 +446,17 @@ export function AddDishDashboard() {
             <select
               id="dish-category"
               value={form.category}
-              onChange={(e) => setForm((p) => ({ ...p, category: e.target.value as DishCategory }))}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              onChange={(e) => setForm((p) => ({ ...p, category: e.target.value as any }))}
+              disabled={loadingCategories}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
             >
-              {CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
+              {loadingCategories ? (
+                <option>Cargando categorías...</option>
+              ) : (
+                categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name_es}</option>
+                ))
+              )}
             </select>
           </div>
           <div className="space-y-1">

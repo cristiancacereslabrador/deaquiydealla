@@ -43,6 +43,16 @@ https://glovoapp.com/es/es/granada/stores/de-aqui-y-de-alla-comida-para-llevar-g
 Archivo actualizado por Antigravity.
 
 
-5 Eliminar el numero de reviews en el boton que me lleva a las reviews de google
+5. [COMPLETADO] ELIMINAR NÚMERO DE REVIEWS EN BOTÓN GOOGLE
+   --------------------------------------------------------
+   Se han actualizado los archivos de traducción para eliminar el número
+   específico de clientes (53/50) y usar un texto más genérico y limpio.
 
-6si hay algo q puedas sugerirme en base a lo necesario para un programa adicional seria genial, tambien creo q podria hacerse un panel RECETAS, donde se pueda colocar por plato los gramos, mililitros o el ingrediente que sea necesario para en base a lo que hay en inventario donde deberian verse los precios por kg o por ml o la medida necesaria para un restaurante, calcular el coste de ingredientes por plato  y obviamente solo mostrarlo en el panel administrativo. 
+6. [COMPLETADO] PANEL DE RECETAS Y COSTES
+   ---------------------------------------------------
+   - Se ha mejorado el panel de Recetas para incluir platos personalizados.
+   - Cálculo automático de Food Cost por plato.
+   - Visualización de costes comerciales (Precio por Kg/L).
+   - SISTEMA DE UNIDADES INTELIGENTE: Entrada de datos en Kg, gr, Litros y ml
+     con conversión automática (sin cálculos manuales).
+   - Mejora en la interfaz de Inventario para facilitar la entrada de precios.

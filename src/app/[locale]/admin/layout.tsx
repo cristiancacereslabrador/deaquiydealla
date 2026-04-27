@@ -70,7 +70,7 @@ export default async function AdminLayout({
           <BookOpen className="w-4 h-4" /> Catálogo & Precios
         </Link>
         <Link href="/admin/recipes" className="flex items-center gap-2 font-semibold text-muted-foreground hover:text-primary">
-          <ChefHat className="w-4 h-4" /> Escandallos (Recetas)
+          <ChefHat className="w-4 h-4" /> Recetas
         </Link>
         <Link href="/admin/reports" className="flex items-center gap-2 font-semibold text-muted-foreground hover:text-primary">
           <BarChart3 className="w-4 h-4" /> Cierre & Reportes

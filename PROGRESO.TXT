@@ -58,10 +58,14 @@ Hecho:
     WhatsApp con mensaje pre-formateado (ID, líneas, alérgenos, IVA, total) 
     dirigido al número de prueba +51980675172.
   - Número de producción del restaurante: +34 603 37 06 63 (configurar en deploy).
-  - Admin Panel en /admin con Supabase Realtime: nuevos pedidos llegan en tiempo
-    real con sonido de notificación.
-  - Botón de pánico para cerrar recepción de pedidos desde el panel.
-  - Toggles de stock por plato desde el panel de administrador.
+  - ✅ Gestión de Precios en Tiempo Real (Supabase Realtime)
+  - ✅ Añadir nuevos platos con subida de imágenes a Supabase Storage
+  - ✅ Sistema de Unidades Inteligente (Kg, gr, L, ml) con conversión automática
+  - ✅ Gestión de Categorías Dinámica: Añade o elimina secciones de la carta desde el panel
+  - ✅ Integración de Platos Personalizados en el Menú Público
+  - ✅ Food Cost y Margen Bruto calculado automáticamente por plato
+  - ✅ Botón de Pánico y Toggle de Stock funcionando (Admin)
+  - ✅ Eliminación de "Escandallos" por "Recetas" (Terminology)
   - Botón "Listo para Recoger" en admin abre WhatsApp al cliente con mensaje
     indicando que su pedido está listo.
 
