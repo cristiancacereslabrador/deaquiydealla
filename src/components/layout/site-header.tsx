@@ -11,6 +11,7 @@ import { BRAND_INFO } from "@/lib/brand";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/service";
 import { cn } from "@/lib/utils";
+import { Suspense } from "react";
 
 /**
  * Cabecera global con marca, navegación principal y controles de tema / idioma.
@@ -103,15 +104,18 @@ export async function SiteHeader() {
 
         {/* ACTIONS (RIGHT) */}
         <div className="flex items-center gap-3 sm:gap-5 ml-2">
-          <CartNavLink />
+          <Suspense fallback={<div className="w-10 h-10" />}>
+            <CartNavLink />
+          </Suspense>
           
           <div className="hidden sm:flex items-center gap-1 border-l pl-2 border-border/40">
             <LocaleSwitcher />
             <ThemeToggle />
           </div>
 
-          {/* HAMBURGER MENU: Only visible below MD breakpoint (button inside already has md:hidden) */}
-          <MobileMenu user={user} isAdmin={isAdmin} />
+          <Suspense fallback={<div className="w-10 h-10 md:hidden" />}>
+            <MobileMenu user={user} isAdmin={isAdmin} />
+          </Suspense>
 
           {/* CONTACT DROPDOWN: Only on MD and up */}
           <div className="hidden md:block shrink-0">
