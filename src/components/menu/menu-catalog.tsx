@@ -143,8 +143,11 @@ export function MenuCatalog({ dishes }: MenuCatalogProps) {
                 // Si no (p.ej. categorías dinámicas o restos de caché), usamos el nombre de la DB.
                 try {
                   const translated = t(`category.${cat.id}`);
-                  // next-intl suele devolver la clave si no la encuentra (según config)
-                  if (translated === `category.${cat.id}`) return cat.name_es;
+                  // Si next-intl devuelve la clave (ej: "Catalog.category.pizzas") 
+                  // o la clave relativa, significa que no hay traducción.
+                  if (translated.includes(cat.id) && translated.includes('category')) {
+                    return cat.name_es;
+                  }
                   return translated;
                 } catch (e) {
                   return cat.name_es;
