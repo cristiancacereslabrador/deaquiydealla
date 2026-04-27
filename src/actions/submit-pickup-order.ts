@@ -39,8 +39,7 @@ export async function submitPickupOrderAction(
   }
 
   const payload: SubmitOrderPayload = parsed.data;
-
-  const computed = recomputeOrderFromCatalog(payload.lines);
+  const computed = await recomputeOrderFromCatalog(payload.lines);
   if (!computed.ok) {
     return {
       ok: false,
@@ -65,7 +64,7 @@ export async function submitPickupOrderAction(
   }
 
   try {
-    // Verificar botón de pánico
+    // ─── 1. Verificar botón de pánico ───────────────────────────────────────────
     const { data: panicData } = await supabase
       .from("store_settings")
       .select("value")
@@ -87,7 +86,7 @@ export async function submitPickupOrderAction(
       };
     }
 
-    // Verificar stock de platos
+    // ─── 2. Verificar stock de platos ──────────────────────────────────────────
     const dishIds = computed.normalizedLines.map((l: { dishId: string }) => l.dishId);
     if (dishIds.length > 0) {
       const { data: stockData } = await supabase
@@ -150,12 +149,22 @@ export async function submitPickupOrderAction(
     const ivaStr = new Intl.NumberFormat("es", { style: "currency", currency: "EUR" }).format((computed.totalCents * 0.10) / 100);
     const netStr = new Intl.NumberFormat("es", { style: "currency", currency: "EUR" }).format((computed.totalCents * 0.90) / 100);
 
+    // ─── 3. Detección de Alérgenos ─────────────────────────────────────────────
+    // Fetch custom dishes again for allergen info (or we could pass it from recompute)
+    const { data: customRaw } = await supabase.from("custom_dishes").select("id, allergens");
     const { DISHES } = await import("@/data/dishes");
+    
     const detectedAllergensSet = new Set<string>();
     computed.normalizedLines.forEach((line: any) => {
-      const dish = DISHES.find(d => d.id === line.dishId);
-      dish?.allergens.forEach(a => detectedAllergensSet.add(a));
+      // Check static
+      const staticDish = DISHES.find(d => d.id === line.dishId);
+      staticDish?.allergens.forEach(a => detectedAllergensSet.add(a));
+      
+      // Check custom
+      const customDish = (customRaw || []).find(d => d.id === line.dishId);
+      customDish?.allergens?.forEach((a: string) => detectedAllergensSet.add(a));
     });
+
     const allergensStr = detectedAllergensSet.size > 0 
       ? Array.from(detectedAllergensSet).join(", ") 
       : "Ninguno detectado";

@@ -139,11 +139,14 @@ export function MenuCatalog({ dishes }: MenuCatalogProps) {
               selected={active === cat.id}
               onClick={() => setActive(cat.id)}
               label={(() => {
+                // Si la categoría existe en el i18n, la usamos.
+                // Si no (p.ej. categorías dinámicas o restos de caché), usamos el nombre de la DB.
                 try {
                   const translated = t(`category.${cat.id}`);
+                  // next-intl suele devolver la clave si no la encuentra (según config)
                   if (translated === `category.${cat.id}`) return cat.name_es;
                   return translated;
-                } catch {
+                } catch (e) {
                   return cat.name_es;
                 }
               })()}

@@ -79,10 +79,13 @@ Hecho:
     Food Cost real basado en recetas y pedidos completados.
   - ✅ Botón de Cierre por WhatsApp: Envío de métricas financieras al dueño.
   - ✅ Modo Menú QR: Implementación inicial de la carta digital estática.
+  - ✅ Limpieza Maestra: Eliminación de productos de muestra (hardcoded) y
+    transición completa al catálogo dinámico de Supabase.
 
 En curso:
   - Refinamiento de PWA y soporte offline.
   - Modo "Mesa" (?modo=mesa) para desactivar carrito en local.
   - Historial de reportes (ayer/mes) en el panel de administración.
 
-Última actualización: 2026-04-27 18:45 +02:00
+Última actualización: 2026-04-27 23:00 +02:00
+
