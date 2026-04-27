@@ -70,19 +70,19 @@ Hecho:
     indicando que su pedido está listo.
 
 --------------------------------------------------------------------------------
-FASE 7 — Estabilidad y Bugfixes (sesión 2026-04-25)
+FASE 7 — Estabilidad, Refinamiento y PWA (Sesión 2026-04-27)
 --------------------------------------------------------------------------------
 Hecho:
-  - Turbopack FATAL crash resuelto: npm run dev usa --webpack por defecto.
-  - Middleware renombrado a proxy.ts (convención Next.js 16).
-  - Parámetros de rutas dinámicas (params) convertidos a async en todas las
-    páginas: about, info, admin.
-  - Botón de descarga de menú PDF: enlace actualizado a Google Drive
-    (https://drive.google.com/file/d/1Nj0w1mObOY0xA8EtbZgH-7rj1V5wVVFk/).
-    El usuario puede reemplazar el PDF en Drive sin tocar el código.
-  - Página /info centrada correctamente con max-w-5xl + mx-auto.
-  - Icono de descarga alineado junto al texto del botón.
-  - Error React "asChild prop" corregido aplicando buttonVariants directamente
-    a los elementos <a>.
+  - ✅ Precisión de Inventario: Migración 007 aplicada (NUMERIC) para permitir
+    costes de ingredientes con precisión de milésimas (crucial para g/ml).
+  - ✅ Reports Dashboard: Implementada vista de cierre de caja con cálculo de
+    Food Cost real basado en recetas y pedidos completados.
+  - ✅ Botón de Cierre por WhatsApp: Envío de métricas financieras al dueño.
+  - ✅ Modo Menú QR: Implementación inicial de la carta digital estática.
 
-Última actualización: 2026-04-25 19:26 +02:00
+En curso:
+  - Refinamiento de PWA y soporte offline.
+  - Modo "Mesa" (?modo=mesa) para desactivar carrito en local.
+  - Historial de reportes (ayer/mes) en el panel de administración.
+
+Última actualización: 2026-04-27 18:45 +02:00

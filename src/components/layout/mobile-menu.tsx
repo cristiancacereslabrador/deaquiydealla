@@ -15,11 +15,13 @@ import {
   Zap,
   Phone,
   MessageCircle,
+  ShoppingCart,
 } from "lucide-react";
 import { BRAND_INFO } from "@/lib/brand";
 import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 
 interface MobileMenuProps {
   user: { id: string } | null;
@@ -28,15 +30,15 @@ interface MobileMenuProps {
 
 /**
  * Menú lateral para móvil.
- * Usa createPortal para renderizar el overlay y el panel FUERA del <header>,
- * evitando que el backdrop-filter del header cree un nuevo containing block
- * que atrape los elementos position:fixed dentro de él.
+ * Usa createPortal para renderizar el overlay y el panel FUERA del <header>.
  */
 export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
   const t = useTranslations("Shell");
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isTableMode = searchParams.get("modo") === "mesa";
 
   // Montar solo en cliente (portal necesita document)
   useEffect(() => {
@@ -45,9 +47,11 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
 
   // Bloquear scroll cuando el menú está abierto
   useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
+    if (mounted) {
+      document.body.style.overflow = open ? "hidden" : "";
+    }
     return () => { document.body.style.overflow = ""; };
-  }, [open]);
+  }, [open, mounted]);
 
   // Cerrar al navegar
   useEffect(() => {
@@ -57,6 +61,7 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
   const navItems = [
     { href: "/",        label: t("navHome"),    icon: Home },
     { href: "/menu",    label: t("navMenu"),    icon: UtensilsCrossed },
+    ...(!isTableMode ? [{ href: "/cart", label: t("navCart"), icon: ShoppingCart }] : []),
     ...(user
       ? [{ href: "/profile", label: t("navProfile"), icon: User }]
       : [{ href: "/login",   label: t("navLogin"),   icon: User }]
@@ -84,21 +89,21 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
             }}
           />
 
-          {/* Panel lateral con fondo BLANCO sólido */}
+          {/* Panel lateral con fondo sólido */}
           <div
             role="dialog"
             aria-modal="true"
             aria-label="Menú de navegación"
+            className="bg-background dark:bg-card"
             style={{
               position: "absolute",
               top: 0,
               right: 0,
               width: "min(85vw, 300px)",
-              maxHeight: "90vh",
-              backgroundColor: "#ffffff",
+              maxHeight: "100vh",
               display: "flex",
               flexDirection: "column",
-              boxShadow: "-12px 12px 60px rgba(0,0,0,0.28), -4px 4px 16px rgba(0,0,0,0.12)",
+              boxShadow: "-12px 12px 60px rgba(0,0,0,0.28)",
               overflowY: "auto",
               borderRadius: "0 0 0 24px",
             }}
@@ -113,21 +118,15 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
                 borderBottom: "1px solid rgba(0,0,0,0.08)",
               }}
             >
-              <span style={{ fontSize: 20, fontWeight: 900, color: "#c8102e", letterSpacing: -0.5 }}>
+              <span className="font-heading font-black text-[#c8102e] text-xl">
                 {t("brand")}
               </span>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                aria-label="Cerrar menú"
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 40, height: 40, borderRadius: "50%",
-                  border: "none", background: "transparent",
-                  cursor: "pointer", fontSize: 0,
-                }}
+                className="p-2 rounded-full hover:bg-muted transition-colors"
               >
-                <X style={{ width: 24, height: 24 }} />
+                <X className="w-6 h-6" />
               </button>
             </div>
 
@@ -139,7 +138,7 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
                 return (
                   <Link
                     key={item.href}
-                    href={item.href}
+                    href={item.href + (isTableMode ? "?modo=mesa" : "")}
                     onClick={() => setOpen(false)}
                     style={{
                       display: "flex",
@@ -151,9 +150,12 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
                       fontWeight: 700,
                       fontSize: 16,
                       textDecoration: "none",
-                      color: isActive ? "#ffffff" : "#1a1a1a",
-                      backgroundColor: isActive ? "#c8102e" : "transparent",
                     }}
+                    className={cn(
+                      isActive 
+                        ? "bg-[#c8102e] text-white" 
+                        : "text-foreground hover:bg-muted"
+                    )}
                   >
                     <item.icon
                       style={{ width: 20, height: 20, flexShrink: 0 }}
@@ -165,16 +167,15 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
               })}
             </nav>
 
-            {/* Footer: Preferencias y Contacto */}
+            {/* Footer */}
             <div
               style={{
                 borderTop: "1px solid rgba(0,0,0,0.08)",
                 padding: "16px 20px 24px",
               }}
             >
-              {/* Idioma y Tema */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.5, color: "#1a1a1a" }}>
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-50">
                   Preferencias
                 </span>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -183,34 +184,21 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
                 </div>
               </div>
 
-              {/* Llamar & WhatsApp */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <a
                   href={`tel:${BRAND_INFO.phone.replace(/\s/g, "")}`}
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    gap: 8, padding: 12, borderRadius: 14,
-                    fontWeight: 700, fontSize: 14,
-                    textDecoration: "none", color: "#1a1a1a",
-                    backgroundColor: "rgba(0,0,0,0.05)",
-                  }}
+                  className="flex items-center justify-center gap-2 p-3 rounded-xl font-bold text-sm bg-muted hover:bg-muted/80 transition-colors"
                 >
-                  <Phone style={{ width: 16, height: 16, color: "#c8102e" }} />
+                  <Phone className="w-4 h-4 text-[#c8102e]" />
                   Llamar
                 </a>
                 <a
                   href={BRAND_INFO.whatsapp}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    gap: 8, padding: 12, borderRadius: 14,
-                    fontWeight: 700, fontSize: 14,
-                    textDecoration: "none", color: "#1a1a1a",
-                    backgroundColor: "rgba(0,0,0,0.05)",
-                  }}
+                  className="flex items-center justify-center gap-2 p-3 rounded-xl font-bold text-sm bg-muted hover:bg-muted/80 transition-colors"
                 >
-                  <MessageCircle style={{ width: 16, height: 16, color: "#25D366" }} />
+                  <MessageCircle className="w-4 h-4 text-[#25D366]" />
                   WhatsApp
                 </a>
               </div>
@@ -223,17 +211,14 @@ export function MobileMenu({ user, isAdmin }: MobileMenuProps) {
 
   return (
     <>
-      {/* Botón hamburguesa */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Abrir menú"
-        className="md:hidden flex items-center justify-center h-11 w-11 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md bg-white dark:bg-gray-800 hover:bg-red-50 active:scale-95 transition-all"
+        className="md:hidden flex items-center justify-center h-11 w-11 rounded-xl border border-border shadow-md bg-card hover:bg-red-50 dark:hover:bg-red-950/20 active:scale-95 transition-all"
       >
         <Menu className="h-6 w-6 text-[#c8102e]" />
       </button>
-
-      {/* Portal: se monta directamente en document.body */}
       {menuPortal}
     </>
   );

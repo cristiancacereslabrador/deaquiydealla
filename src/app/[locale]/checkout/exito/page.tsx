@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { CheckCircle2, MessageCircle, ShoppingBag, Home } from "lucide-react";
+import { CopyOrderId } from "@/components/checkout/copy-order-id";
 
 type ExitoPageProps = {
   searchParams: Promise<{ order?: string; wa?: string }>;
@@ -66,7 +67,8 @@ export default async function CheckoutExitoPage({ searchParams }: ExitoPageProps
         <p className="font-mono text-sm break-all text-foreground font-semibold">
           {uuid.data}
         </p>
-        <p className="mt-2 text-xs text-muted-foreground">
+        <CopyOrderId orderId={uuid.data} />
+        <p className="mt-4 text-xs text-muted-foreground italic">
           Muestra este número al recoger tu pedido en caja.
         </p>
       </div>

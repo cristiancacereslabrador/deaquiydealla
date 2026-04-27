@@ -6,14 +6,19 @@ import { useCartStore } from "@/stores/cart-store";
 import { useTranslations } from "next-intl";
 import { ShoppingCart } from "lucide-react";
 import { startTransition, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 /**
  * Enlace al carrito con contador de unidades (suscrito al store de Zustand).
+ * Si detecta el parámetro ?modo=mesa, se oculta para funcionar solo como carta digital.
  *
  * @returns `Link` alineado con el estilo de navegación principal.
  */
 export function CartNavLink() {
   const t = useTranslations("Shell");
+  const searchParams = useSearchParams();
+  const isTableMode = searchParams.get("modo") === "mesa";
+  
   const count = useCartStore((s) =>
     s.items.reduce((acc, line) => acc + line.quantity, 0)
   );
@@ -22,6 +27,8 @@ export function CartNavLink() {
   useEffect(() => {
     startTransition(() => setMounted(true));
   }, []);
+
+  if (isTableMode) return null;
 
   return (
     <Link

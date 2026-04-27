@@ -80,11 +80,20 @@ export function CartView() {
     [items]
   );
 
-  // Cross-selling logic
+  // Smart Cross-selling
   const suggestedDishes = useMemo(() => {
+    const hasBeverage = items.some(i => DISHES.find(d => d.id === i.dishId)?.category === "bebidas");
+    const hasDessert = items.some(i => DISHES.find(d => d.id === i.dishId)?.category === "postres");
+    
     return DISHES.filter(d => !items.find(i => i.dishId === d.id))
-                 .filter(d => d.category === "entrantes" || d.category === "bebidas")
-                 .slice(0, 2);
+                 .filter(d => {
+                   if (!hasBeverage && d.category === "bebidas") return true;
+                   if (!hasDessert && d.category === "postres") return true;
+                   if (d.category === "entrantes") return true;
+                   return false;
+                 })
+                 .sort(() => Math.random() - 0.5) // Shuffle for variety
+                 .slice(0, 3);
   }, [items]);
 
   if (!mounted) {

@@ -102,6 +102,8 @@ export function CheckoutPageClient({
 
     try {
       localStorage.setItem("last_order_cart", JSON.stringify(items));
+      localStorage.setItem("last_order_id", result.orderId);
+      localStorage.setItem("last_order_at", new Date().toISOString());
     } catch (e) {
       // Ignore localStorage errors
     }

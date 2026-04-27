@@ -6,6 +6,7 @@ import { ChevronRight, Clock, MapPin, Phone, Truck, Smile, ExternalLink } from "
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { getTranslations } from "next-intl/server";
 import { BRAND_INFO } from "@/lib/brand";
+import { LastOrderCard } from "@/components/order/last-order-card";
 
 /**
  * @description Landing page clonada del diseño Light Mode (Chatsito Comida China).
@@ -34,6 +35,10 @@ export default async function HomePage() {
               <p className="text-lg text-[#555] dark:text-white/80 max-w-md mx-auto lg:mx-0 font-medium leading-relaxed">
                 {t("heroSubtitle")}
               </p>
+
+              <div className="max-w-md mx-auto lg:mx-0">
+                <LastOrderCard />
+              </div>
 
               <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 pt-2">
                 <Link

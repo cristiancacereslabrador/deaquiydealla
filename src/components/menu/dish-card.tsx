@@ -8,6 +8,7 @@ import { ShoppingBag } from "lucide-react";
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type DishCardProps = {
   /** Plato a mostrar. */
@@ -18,10 +19,14 @@ type DishCardProps = {
 
 /**
  * Tarjeta de producto con imagen, textos localizados y acción de añadir al carrito.
+ * Soporta 'Modo Mesa' para funcionar solo como carta digital interactiva.
  */
 export function DishCard({ dish, isOutOfStock = false }: DishCardProps) {
   const locale = useLocale();
   const t = useTranslations("Catalog");
+  const searchParams = useSearchParams();
+  const isTableMode = searchParams.get("modo") === "mesa";
+  
   const addItem = useCartStore((s) => s.addItem);
   const [addedFlash, setAddedFlash] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -39,7 +44,7 @@ export function DishCard({ dish, isOutOfStock = false }: DishCardProps) {
    * Añade una unidad al carrito con validación en el store (Zod).
    */
   const handleAdd = useCallback(() => {
-    if (isOutOfStock) return;
+    if (isOutOfStock || isTableMode) return;
     
     const ok = addItem({
       dishId: dish.id,
@@ -53,7 +58,7 @@ export function DishCard({ dish, isOutOfStock = false }: DishCardProps) {
       setAddedFlash(true);
       window.setTimeout(() => setAddedFlash(false), 1200);
     }
-  }, [addItem, dish, isOutOfStock]);
+  }, [addItem, dish, isOutOfStock, isTableMode]);
 
   return (
     <article className={cn(
@@ -117,23 +122,29 @@ export function DishCard({ dish, isOutOfStock = false }: DishCardProps) {
           )}>
             {formattedPrice}
           </p>
-          <button
-            type="button"
-            onClick={handleAdd}
-            disabled={isOutOfStock}
-            className={cn(
-              buttonVariants({ size: "sm" }),
-              "gap-1.5",
-              addedFlash && "ring-2 ring-[oklch(0.72_0.14_85)]",
-              isOutOfStock && "bg-muted text-muted-foreground hover:bg-muted cursor-not-allowed"
-            )}
-          >
-            <ShoppingBag className="size-4" aria-hidden />
-            {isOutOfStock ? "Agotado" : t("addToCart")}
-          </button>
+          {!isTableMode && (
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={isOutOfStock}
+              className={cn(
+                buttonVariants({ size: "sm" }),
+                "gap-1.5",
+                addedFlash && "ring-2 ring-[oklch(0.72_0.14_85)]",
+                isOutOfStock && "bg-muted text-muted-foreground hover:bg-muted cursor-not-allowed"
+              )}
+            >
+              <ShoppingBag className="size-4" aria-hidden />
+              {isOutOfStock ? "Agotado" : t("addToCart")}
+            </button>
+          )}
+          {isTableMode && !isOutOfStock && (
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-muted/50 px-2 py-1 rounded">
+              Carta Digital
+            </span>
+          )}
         </div>
       </div>
     </article>
   );
 }
-
