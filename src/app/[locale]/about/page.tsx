@@ -35,14 +35,9 @@ export default async function AboutPage({
         </div>
 
         <div className="space-y-6">
-          <h1 className="text-4xl md:text-5xl font-serif font-bold text-primary">
-            {t("chefName")}
-          </h1>
-          <p className="text-xl font-medium text-muted-foreground italic">
-            {t("chefQuote")}
-          </p>
 
-          <div className="prose prose-lg dark:prose-invert">
+
+          <div className="prose prose-lg dark:prose-invert text-justify">
             <p>
               {t("bioPara1")}
             </p>
