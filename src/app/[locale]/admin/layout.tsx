@@ -1,5 +1,5 @@
 import { setRequestLocale } from "next-intl/server";
-import { Zap, PackageSearch, ChefHat, BarChart3, Clock } from "lucide-react";
+import { Zap, PackageSearch, ChefHat, BarChart3, Clock, BookOpen } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 
 export default async function AdminLayout({
@@ -36,21 +36,25 @@ export default async function AdminLayout({
 
       {/* Mobile Bottom Navigation Bar (PWA Style) */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] flex justify-around sm:hidden">
-        <Link href="/admin" className="flex flex-col items-center py-3 px-2 text-muted-foreground hover:text-primary focus:text-primary">
+        <Link href="/admin" className="flex flex-col items-center py-3 px-1 text-muted-foreground hover:text-primary focus:text-primary">
           <Clock className="w-5 h-5 mb-1" />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Pedidos</span>
+          <span className="text-[9px] font-bold uppercase tracking-wider">Pedidos</span>
         </Link>
-        <Link href="/admin/inventory" className="flex flex-col items-center py-3 px-2 text-muted-foreground hover:text-primary focus:text-primary">
+        <Link href="/admin/inventory" className="flex flex-col items-center py-3 px-1 text-muted-foreground hover:text-primary focus:text-primary">
           <PackageSearch className="w-5 h-5 mb-1" />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Inventario</span>
+          <span className="text-[9px] font-bold uppercase tracking-wider">Inventario</span>
         </Link>
-        <Link href="/admin/recipes" className="flex flex-col items-center py-3 px-2 text-muted-foreground hover:text-primary focus:text-primary">
+        <Link href="/admin/catalog" className="flex flex-col items-center py-3 px-1 text-muted-foreground hover:text-primary focus:text-primary">
+          <BookOpen className="w-5 h-5 mb-1" />
+          <span className="text-[9px] font-bold uppercase tracking-wider">Catálogo</span>
+        </Link>
+        <Link href="/admin/recipes" className="flex flex-col items-center py-3 px-1 text-muted-foreground hover:text-primary focus:text-primary">
           <ChefHat className="w-5 h-5 mb-1" />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Recetas</span>
+          <span className="text-[9px] font-bold uppercase tracking-wider">Recetas</span>
         </Link>
-        <Link href="/admin/reports" className="flex flex-col items-center py-3 px-2 text-muted-foreground hover:text-primary focus:text-primary">
+        <Link href="/admin/reports" className="flex flex-col items-center py-3 px-1 text-muted-foreground hover:text-primary focus:text-primary">
           <BarChart3 className="w-5 h-5 mb-1" />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Reportes</span>
+          <span className="text-[9px] font-bold uppercase tracking-wider">Reportes</span>
         </Link>
       </nav>
 
@@ -61,6 +65,9 @@ export default async function AdminLayout({
         </Link>
         <Link href="/admin/inventory" className="flex items-center gap-2 font-semibold text-muted-foreground hover:text-primary">
           <PackageSearch className="w-4 h-4" /> Inventario
+        </Link>
+        <Link href="/admin/catalog" className="flex items-center gap-2 font-semibold text-muted-foreground hover:text-primary">
+          <BookOpen className="w-4 h-4" /> Catálogo & Precios
         </Link>
         <Link href="/admin/recipes" className="flex items-center gap-2 font-semibold text-muted-foreground hover:text-primary">
           <ChefHat className="w-4 h-4" /> Escandallos (Recetas)

@@ -7,6 +7,12 @@ import { useTranslations } from "next-intl";
 import { useMemo, useState, useEffect } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
+/** Price override row from Supabase */
+interface PriceOverride {
+  dish_id: string;
+  price_cents: number;
+}
+
 type MenuCatalogProps = {
   /** Lista de platos a renderizar (normalmente {@link import("@/data/dishes").DISHES}). */
   dishes: readonly Dish[];
@@ -22,59 +28,96 @@ const CATEGORY_KEYS: DishCategory[] = [
 ];
 
 /**
- * Catálogo filtrable por categoría con rejilla responsive y estado de stock en tiempo real.
+ * Catálogo filtrable por categoría con rejilla responsive,
+ * estado de stock en tiempo real y precios dinámicos desde Supabase.
  */
 export function MenuCatalog({ dishes }: MenuCatalogProps) {
   const t = useTranslations("Catalog");
   const [active, setActive] = useState<DishCategory | "all">("all");
   const [outOfStockIds, setOutOfStockIds] = useState<Set<string>>(new Set());
+
+  /** price overrides from Supabase: dish_id → price_cents */
+  const [priceOverrides, setPriceOverrides] = useState<Record<string, number>>({});
+
   const supabase = createBrowserSupabaseClient();
 
   useEffect(() => {
-    // 1. Carga inicial de platos agotados
-    const fetchStock = async () => {
-      const { data } = await supabase
-        .from("dish_status")
-        .select("dish_id")
-        .eq("is_available", false);
-      
-      if (data) {
-        setOutOfStockIds(new Set(data.map(d => d.dish_id)));
+    // ── 1. Carga inicial: platos agotados + precios override ──
+    const fetchInitialData = async () => {
+      const [stockRes, priceRes] = await Promise.all([
+        supabase.from("dish_status").select("dish_id").eq("is_available", false),
+        supabase.from("dish_price_overrides").select("dish_id, price_cents"),
+      ]);
+
+      if (stockRes.data) {
+        setOutOfStockIds(new Set(stockRes.data.map((d: { dish_id: string }) => d.dish_id)));
+      }
+      if (priceRes.data) {
+        const map: Record<string, number> = {};
+        (priceRes.data as PriceOverride[]).forEach((row) => {
+          map[row.dish_id] = row.price_cents;
+        });
+        setPriceOverrides(map);
       }
     };
 
-    fetchStock();
+    fetchInitialData();
 
-    // 2. Suscripción en tiempo real
+    // ── 2. Suscripción en tiempo real: stock + precios ──
     const channel = supabase
-      .channel("menu-stock-sync")
+      .channel("menu-live-sync")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "dish_status" },
         (payload) => {
           const { dish_id, is_available } = payload.new as { dish_id: string; is_available: boolean };
-          setOutOfStockIds(prev => {
+          setOutOfStockIds((prev) => {
             const next = new Set(prev);
-            if (is_available) {
-              next.delete(dish_id);
-            } else {
-              next.add(dish_id);
-            }
+            if (is_available) next.delete(dish_id); else next.add(dish_id);
             return next;
           });
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dish_price_overrides" },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            const old = payload.old as { dish_id: string };
+            setPriceOverrides((prev) => {
+              const next = { ...prev };
+              delete next[old.dish_id];
+              return next;
+            });
+          } else {
+            const row = payload.new as PriceOverride;
+            if (row?.dish_id) {
+              setPriceOverrides((prev) => ({ ...prev, [row.dish_id]: row.price_cents }));
+            }
+          }
+        }
+      )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [supabase]);
 
+  /**
+   * Merge overrides into dishes so DishCard always shows the current price.
+   * Only static dishes from DISHES are overridden here; custom_dishes have their own price.
+   */
+  const dishesWithPrices = useMemo((): Dish[] => {
+    return dishes.map((d) =>
+      priceOverrides[d.id] !== undefined
+        ? { ...d, priceCents: priceOverrides[d.id] }
+        : { ...d }
+    );
+  }, [dishes, priceOverrides]);
+
   const filtered = useMemo(() => {
-    if (active === "all") return [...dishes];
-    return dishes.filter((d) => d.category === active);
-  }, [dishes, active]);
+    if (active === "all") return dishesWithPrices;
+    return dishesWithPrices.filter((d) => d.category === active);
+  }, [dishesWithPrices, active]);
 
   return (
     <div className="space-y-4">
@@ -110,9 +153,9 @@ export function MenuCatalog({ dishes }: MenuCatalogProps) {
         <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((dish) => (
             <li key={dish.id}>
-              <DishCard 
-                dish={dish} 
-                isOutOfStock={outOfStockIds.has(dish.id)} 
+              <DishCard
+                dish={dish}
+                isOutOfStock={outOfStockIds.has(dish.id)}
               />
             </li>
           ))}
@@ -121,6 +164,7 @@ export function MenuCatalog({ dishes }: MenuCatalogProps) {
     </div>
   );
 }
+
 
 type FilterChipProps = {
   selected: boolean;
