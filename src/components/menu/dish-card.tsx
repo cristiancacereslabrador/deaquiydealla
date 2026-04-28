@@ -67,7 +67,7 @@ export function DishCard({ dish, isOutOfStock = false }: DishCardProps) {
     )}>
 
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
-        {!imgError ? (
+        {(!imgError && dish.imageUrl) ? (
           <Image
             src={dish.imageUrl}
             alt={name}

@@ -118,7 +118,7 @@ export function EditDishModal({ dish, categories, onClose, onSaved }: EditDishMo
     setForm((prev) => ({
       ...prev,
       allergens: prev.allergens.includes(allergen)
-        ? prev.allergens.filter((a) => a !== allergen)
+        ? prev.allergens.filter((a: Allergen) => a !== allergen)
         : [...prev.allergens, allergen],
     }));
   };
