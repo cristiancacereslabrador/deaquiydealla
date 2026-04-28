@@ -26,13 +26,16 @@ export async function recomputeOrderFromCatalog(
 
   const supabase = await createServerSupabaseClient();
 
-  // Fetch all custom dishes from DB to have the latest prices and info
-  const { data: customRaw } = await supabase
-    .from("custom_dishes")
-    .select("*")
-    .is("deleted_at", null);
+  // Fetch all custom dishes and price overrides
+  const [customRes, overridesRes] = await Promise.all([
+    supabase.from("custom_dishes").select("*").is("deleted_at", null),
+    supabase.from("dish_price_overrides").select("*")
+  ]);
 
-  const customDishes: Dish[] = (customRaw || []).map(d => ({
+  const customRaw = customRes.data || [];
+  const overrides = overridesRes.data || [];
+
+  const customDishes: Dish[] = customRaw.map(d => ({
     id: d.id,
     category: d.category,
     nameEs: d.name_es,
@@ -45,8 +48,21 @@ export async function recomputeOrderFromCatalog(
   }));
 
   const allDishesMap = new Map<string, Dish>();
-  // Combine static and custom
-  DISHES.forEach(d => allDishesMap.set(d.id, d));
+  
+  // Combine static and custom, applying overrides
+  DISHES.forEach(d => {
+    const o = overrides.find(ov => ov.dish_id === d.id);
+    if (!o?.is_deleted) {
+      allDishesMap.set(d.id, {
+        ...d,
+        nameEs: o?.name_es || d.nameEs,
+        nameEn: o?.name_en || d.nameEn,
+        priceCents: o?.price_cents ?? d.priceCents,
+        imageUrl: o?.image_path || d.imageUrl,
+        allergens: o?.allergens || d.allergens,
+      });
+    }
+  });
   customDishes.forEach(d => allDishesMap.set(d.id, d));
 
   let totalCents = 0;

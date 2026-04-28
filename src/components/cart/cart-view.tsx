@@ -18,7 +18,7 @@ import { getStoreStatus } from "@/lib/store-status";
  *
  * @returns Bloque de UI del carrito o estado vacío.
  */
-export function CartView() {
+export function CartView({ allDishes }: { allDishes: any[] }) {
   const t = useTranslations("CartPage");
   const locale = useLocale();
   const [mounted, setMounted] = useState(false);
@@ -82,10 +82,10 @@ export function CartView() {
 
   // Smart Cross-selling
   const suggestedDishes = useMemo(() => {
-    const hasBeverage = items.some(i => DISHES.find(d => d.id === i.dishId)?.category === "bebidas");
-    const hasDessert = items.some(i => DISHES.find(d => d.id === i.dishId)?.category === "postres");
+    const hasBeverage = items.some(i => allDishes.find(d => d.id === i.dishId)?.category === "bebidas");
+    const hasDessert = items.some(i => allDishes.find(d => d.id === i.dishId)?.category === "postres");
     
-    return DISHES.filter(d => !items.find(i => i.dishId === d.id))
+    return allDishes.filter(d => !items.find(i => i.dishId === d.id))
                  .filter(d => {
                    if (!hasBeverage && d.category === "bebidas") return true;
                    if (!hasDessert && d.category === "postres") return true;
@@ -94,7 +94,7 @@ export function CartView() {
                  })
                  .sort(() => Math.random() - 0.5) // Shuffle for variety
                  .slice(0, 3);
-  }, [items]);
+  }, [items, allDishes]);
 
   if (!mounted) {
     return (

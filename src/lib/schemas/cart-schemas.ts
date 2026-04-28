@@ -4,45 +4,35 @@ import { z } from "zod";
  * Esquema Zod para una línea del carrito persistida (anti datos corruptos / manipulación en `localStorage`).
  */
 export const cartLineSchema = z.object({
-  dishId: z.string().min(1).max(64),
-  quantity: z.number().int().min(1).max(99),
-  nameEs: z.string().min(1).max(120),
-  nameEn: z.string().min(1).max(120),
-  unitPriceCents: z.number().int().min(50).max(500_00),
-  imageUrl: z.string().max(512),
+  dishId: z.string().catch("unknown"),
+  quantity: z.number().int().catch(1),
+  nameEs: z.string().catch("Plato"),
+  nameEn: z.string().catch("Dish"),
+  unitPriceCents: z.number().int().catch(0),
+  imageUrl: z.string().nullable().catch(""),
 });
 
-/**
- * Tipo inferido de {@link cartLineSchema}.
- */
 export type CartLineInput = z.infer<typeof cartLineSchema>;
 
-/**
- * Valida un array de líneas; si falla, devuelve lista vacía para recuperar el carrito sin romper la UI.
- *
- * @param raw - Valor desconocido (p. ej. desde `localStorage`).
- * @returns Líneas válidas o `[]`.
- */
 export function safeParseCartLines(raw: unknown): CartLineInput[] {
   const arr = z.array(cartLineSchema).safeParse(raw);
   return arr.success ? arr.data : [];
 }
 
-/**
- * Payload mínimo al añadir un plato (se valida antes de fusionar en el store).
- */
 export const addToCartPayloadSchema = z
   .object({
-    dishId: z.string().min(1).max(64),
-    quantity: z.number().int().min(1).max(20).optional(),
-    nameEs: z.string().min(1).max(120),
-    nameEn: z.string().min(1).max(120),
-    unitPriceCents: z.number().int().min(50).max(500_00),
-    imageUrl: z.string().max(512),
+    dishId: z.string().catch("unknown"),
+    quantity: z.number().int().optional().catch(1),
+    nameEs: z.string().catch("Plato"),
+    nameEn: z.string().optional().nullable().catch("Dish"),
+    unitPriceCents: z.number().int().catch(0),
+    imageUrl: z.string().optional().nullable().catch(""),
   })
   .transform((data) => ({
     ...data,
     quantity: data.quantity ?? 1,
+    nameEn: data.nameEn || data.nameEs || "Dish",
+    imageUrl: data.imageUrl || "",
   }));
 
 export type AddToCartPayload = z.output<typeof addToCartPayloadSchema>;

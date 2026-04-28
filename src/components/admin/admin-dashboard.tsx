@@ -214,18 +214,32 @@ export function AdminDashboard() {
       supabase.from("store_settings").select("*").eq("id", "panic_button").single(),
       supabase.from("dish_status").select("*"),
       supabase.from("custom_dishes").select("*").is("deleted_at", null),
-    ]).then(([ordersRes, panicRes, stockRes, customRes]) => {
+      supabase.from("dish_price_overrides").select("*"),
+    ]).then(([ordersRes, panicRes, stockRes, customRes, overridesRes]) => {
       if (ordersRes.data) setOrders(ordersRes.data as Order[]);
       if (panicRes.data?.value?.active) setPanicActive(true);
       
-      // Combined dishes logic
+      const overrides = overridesRes.data || [];
+      const deletedStaticIds = new Set(overrides.filter(o => o.is_deleted).map(o => o.dish_id));
+
       const customDishes = (customRes.data || []).map(d => ({
         id: d.id,
         nameEs: d.name_es,
         category: d.category,
         isCustom: true
       }));
-      setCombinedDishes([...DISHES, ...customDishes]);
+
+      const staticDishes = DISHES.filter(d => !deletedStaticIds.has(d.id)).map(d => {
+        const o = overrides.find(ov => ov.dish_id === d.id);
+        return {
+          ...d,
+          nameEs: o?.name_es || d.nameEs,
+          category: o?.category || d.category,
+          isCustom: false
+        };
+      });
+
+      setCombinedDishes([...staticDishes, ...customDishes]);
 
       if (stockRes.data) {
         const map = (stockRes.data as DishStatus[]).reduce((acc, row) => {

@@ -3,22 +3,16 @@ import { DISHES, Dish } from "@/data/dishes";
 import { getTranslations } from "next-intl/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-/**
- * Página de menú: catálogo de platos con imágenes y carrito (Zustand).
- * Ahora incluye platos personalizados desde la base de datos.
- */
 export default async function MenuPage() {
   const t = await getTranslations("MenuPage");
   const supabase = await createServerSupabaseClient();
 
-  // Fetch custom dishes from DB
-  const { data: customRaw } = await supabase
-    .from("custom_dishes")
-    .select("*")
-    .is("deleted_at", null)
-    .eq("is_active", true);
+  const [customRes, overridesRes] = await Promise.all([
+    supabase.from("custom_dishes").select("*").is("deleted_at", null).eq("is_active", true),
+    supabase.from("dish_price_overrides").select("*")
+  ]);
 
-  const customDishes: Dish[] = (customRaw || []).map(d => ({
+  const customDishes: Dish[] = (customRes.data || []).map(d => ({
     id: d.id,
     category: d.category,
     nameEs: d.name_es,
@@ -30,8 +24,30 @@ export default async function MenuPage() {
     allergens: d.allergens as any
   }));
 
-  // Combine static and dynamic dishes
-  const allDishes = [...DISHES, ...customDishes];
+  const deletedStaticIds = new Set<string>();
+  const staticDishes = DISHES.filter(d => {
+    const override = overridesRes.data?.find(o => o.dish_id === d.id);
+    if (override?.is_deleted) {
+      deletedStaticIds.add(d.id);
+      return false;
+    }
+    return true;
+  }).map(d => {
+    const override = overridesRes.data?.find(o => o.dish_id === d.id);
+    return {
+      ...d,
+      category: override?.category || d.category,
+      nameEs: override?.name_es || d.nameEs,
+      nameEn: override?.name_en || d.nameEn,
+      descriptionEs: override?.description_es || d.descriptionEs,
+      descriptionEn: override?.description_en || d.descriptionEn,
+      priceCents: override?.price_cents ?? d.priceCents,
+      imageUrl: override?.image_path || d.imageUrl,
+      allergens: override?.allergens || d.allergens,
+    };
+  });
+
+  const allDishes = [...staticDishes, ...customDishes];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">

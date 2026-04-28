@@ -150,19 +150,27 @@ export async function submitPickupOrderAction(
     const netStr = new Intl.NumberFormat("es", { style: "currency", currency: "EUR" }).format((computed.totalCents * 0.90) / 100);
 
     // ─── 3. Detección de Alérgenos ─────────────────────────────────────────────
-    // Fetch custom dishes again for allergen info (or we could pass it from recompute)
-    const { data: customRaw } = await supabase.from("custom_dishes").select("id, allergens");
+    // Fetch custom dishes and overrides again for allergen info
+    const [customRes, overridesRes] = await Promise.all([
+      supabase.from("custom_dishes").select("id, allergens"),
+      supabase.from("dish_price_overrides").select("dish_id, allergens")
+    ]);
     const { DISHES } = await import("@/data/dishes");
     
     const detectedAllergensSet = new Set<string>();
     computed.normalizedLines.forEach((line: any) => {
-      // Check static
-      const staticDish = DISHES.find(d => d.id === line.dishId);
-      staticDish?.allergens.forEach(a => detectedAllergensSet.add(a));
-      
       // Check custom
-      const customDish = (customRaw || []).find(d => d.id === line.dishId);
-      customDish?.allergens?.forEach((a: string) => detectedAllergensSet.add(a));
+      const customDish = (customRes.data || []).find(d => d.id === line.dishId);
+      if (customDish) {
+        customDish.allergens?.forEach((a: string) => detectedAllergensSet.add(a));
+      } else {
+        // Check static with override
+        const override = (overridesRes.data || []).find(o => o.dish_id === line.dishId);
+        const staticDish = DISHES.find(d => d.id === line.dishId);
+        
+        const activeAllergens = override?.allergens || staticDish?.allergens || [];
+        activeAllergens.forEach((a: string) => detectedAllergensSet.add(a));
+      }
     });
 
     const allergensStr = detectedAllergensSet.size > 0 

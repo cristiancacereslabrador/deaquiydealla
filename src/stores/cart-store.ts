@@ -50,6 +50,7 @@ export const useCartStore = create<CartStoreState>()(
       addItem(payload: unknown) {
         const parsed = addToCartPayloadSchema.safeParse(payload);
         if (!parsed.success) {
+          console.error("Cart validation failed:", JSON.stringify(parsed.error.issues, null, 2), JSON.stringify(payload, null, 2));
           return false;
         }
         const p = parsed.data;

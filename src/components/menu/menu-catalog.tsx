@@ -1,22 +1,11 @@
 "use client";
 
 import { DishCard } from "@/components/menu/dish-card";
-import type { Dish, DishCategory } from "@/data/dishes";
+import type { Dish } from "@/data/dishes";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useMemo, useState, useEffect } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-
-/** Price override row from Supabase */
-interface PriceOverride {
-  dish_id: string;
-  price_cents: number;
-}
-
-type MenuCatalogProps = {
-  /** Lista de platos a renderizar (normalmente {@link import("@/data/dishes").DISHES}). */
-  dishes: readonly Dish[];
-};
 
 interface DBCategory {
   id: string;
@@ -24,27 +13,23 @@ interface DBCategory {
   name_en: string;
 }
 
-/**
- * Catálogo filtrable por categoría con rejilla responsive,
- * estado de stock en tiempo real y precios dinámicos desde Supabase.
- */
-export function MenuCatalog({ dishes }: MenuCatalogProps) {
+export function MenuCatalog({ dishes }: { dishes: readonly Dish[] }) {
   const t = useTranslations("Catalog");
+  const locale = useLocale();
   const [active, setActive] = useState<string>("all");
   const [outOfStockIds, setOutOfStockIds] = useState<Set<string>>(new Set());
   const [categories, setCategories] = useState<DBCategory[]>([]);
 
-  /** price overrides from Supabase: dish_id → price_cents */
-  const [priceOverrides, setPriceOverrides] = useState<Record<string, number>>({});
+  const [overrides, setOverrides] = useState<Record<string, any>>({});
+  const [customDishesUpdates, setCustomDishesUpdates] = useState<Record<string, any>>({});
 
   const supabase = createBrowserSupabaseClient();
 
   useEffect(() => {
-    // ── 1. Carga inicial: platos agotados + precios override ──
     const fetchInitialData = async () => {
       const [stockRes, priceRes, catRes] = await Promise.all([
         supabase.from("dish_status").select("dish_id").eq("is_available", false),
-        supabase.from("dish_price_overrides").select("dish_id, price_cents"),
+        supabase.from("dish_price_overrides").select("*"),
         supabase.from("categories").select("id, name_es, name_en").order("sort_order"),
       ]);
 
@@ -54,17 +39,16 @@ export function MenuCatalog({ dishes }: MenuCatalogProps) {
         setOutOfStockIds(new Set(stockRes.data.map((d: { dish_id: string }) => d.dish_id)));
       }
       if (priceRes.data) {
-        const map: Record<string, number> = {};
-        (priceRes.data as PriceOverride[]).forEach((row) => {
-          map[row.dish_id] = row.price_cents;
+        const map: Record<string, any> = {};
+        priceRes.data.forEach((row) => {
+          map[row.dish_id] = row;
         });
-        setPriceOverrides(map);
+        setOverrides(map);
       }
     };
 
     fetchInitialData();
 
-    // ── 2. Suscripción en tiempo real: stock + precios ──
     const channel = supabase
       .channel("menu-live-sync")
       .on(
@@ -85,15 +69,33 @@ export function MenuCatalog({ dishes }: MenuCatalogProps) {
         (payload) => {
           if (payload.eventType === "DELETE") {
             const old = payload.old as { dish_id: string };
-            setPriceOverrides((prev) => {
+            setOverrides((prev) => {
               const next = { ...prev };
               delete next[old.dish_id];
               return next;
             });
           } else {
-            const row = payload.new as PriceOverride;
+            const row = payload.new;
             if (row?.dish_id) {
-              setPriceOverrides((prev) => ({ ...prev, [row.dish_id]: row.price_cents }));
+              setOverrides((prev) => ({ ...prev, [row.dish_id]: row }));
+            }
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "custom_dishes" },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            const old = payload.old as { id: string };
+            setCustomDishesUpdates((prev) => {
+              const next = { ...prev, [old.id]: { deleted_at: new Date().toISOString() } };
+              return next;
+            });
+          } else {
+            const row = payload.new;
+            if (row?.id) {
+              setCustomDishesUpdates((prev) => ({ ...prev, [row.id]: row }));
             }
           }
         }
@@ -103,21 +105,48 @@ export function MenuCatalog({ dishes }: MenuCatalogProps) {
     return () => { supabase.removeChannel(channel); };
   }, [supabase]);
 
-  /**
-   * Merge overrides into dishes so DishCard always shows the current price.
-   */
-  const dishesWithPrices = useMemo((): Dish[] => {
-    return dishes.map((d) =>
-      priceOverrides[d.id] !== undefined
-        ? { ...d, priceCents: priceOverrides[d.id] }
-        : { ...d }
-    );
-  }, [dishes, priceOverrides]);
+  const liveDishes = useMemo((): Dish[] => {
+    return dishes.map((d) => {
+      // Is it a custom dish? (UUID length is > 30)
+      if (d.id.length > 20 && customDishesUpdates[d.id]) {
+        const c = customDishesUpdates[d.id];
+        if (c.deleted_at) return { ...d, _isDeleted: true } as any;
+        return {
+          ...d,
+          category: c.category,
+          nameEs: c.name_es,
+          nameEn: c.name_en || c.name_es,
+          descriptionEs: c.description_es,
+          descriptionEn: c.description_en,
+          priceCents: c.price_cents,
+          imageUrl: c.image_path,
+          allergens: c.allergens
+        };
+      }
+
+      // Static dish override
+      const o = overrides[d.id];
+      if (!o) return d;
+      if (o.is_deleted) return { ...d, _isDeleted: true } as any;
+      
+      return {
+        ...d,
+        category: o.category || d.category,
+        nameEs: o.name_es || d.nameEs,
+        nameEn: o.name_en || d.nameEn,
+        descriptionEs: o.description_es || d.descriptionEs,
+        descriptionEn: o.description_en || d.descriptionEn,
+        priceCents: o.price_cents ?? d.priceCents,
+        imageUrl: o.image_path || d.imageUrl,
+        allergens: o.allergens || d.allergens,
+      };
+    }).filter(d => !d._isDeleted);
+  }, [dishes, overrides, customDishesUpdates]);
 
   const filtered = useMemo(() => {
-    if (active === "all") return dishesWithPrices;
-    return dishesWithPrices.filter((d) => d.category === active);
-  }, [dishesWithPrices, active]);
+    if (active === "all") return liveDishes;
+    return liveDishes.filter((d) => d.category === active);
+  }, [liveDishes, active]);
 
   return (
     <div className="space-y-4">
@@ -138,21 +167,7 @@ export function MenuCatalog({ dishes }: MenuCatalogProps) {
               key={cat.id}
               selected={active === cat.id}
               onClick={() => setActive(cat.id)}
-              label={(() => {
-                // Si la categoría existe en el i18n, la usamos.
-                // Si no (p.ej. categorías dinámicas o restos de caché), usamos el nombre de la DB.
-                try {
-                  const translated = t(`category.${cat.id}`);
-                  // Si next-intl devuelve la clave (ej: "Catalog.category.pizzas") 
-                  // o la clave relativa, significa que no hay traducción.
-                  if (translated.includes(cat.id) && translated.includes('category')) {
-                    return cat.name_es;
-                  }
-                  return translated;
-                } catch (e) {
-                  return cat.name_es;
-                }
-              })()}
+              label={locale === "en" && cat.name_en ? cat.name_en : cat.name_es}
             />
           ))}
         </div>
