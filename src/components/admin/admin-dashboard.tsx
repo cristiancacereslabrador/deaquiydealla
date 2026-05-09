@@ -102,6 +102,56 @@ function waUrl(phone: string, message: string): string {
   return `https://api.whatsapp.com/send?phone=${prefix}&text=${encodeURIComponent(message)}`;
 }
 
+/**
+ * @description Envía un pedido directamente a una impresora Epson TM mediante ePOS-Print XML.
+ * @param order - El pedido a imprimir.
+ * @param ip - La dirección IP de la impresora.
+ */
+async function sendToEpsonDirect(order: Order, ip: string) {
+  const url = `http://${ip}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
+  
+  // Construcción manual del XML de ePOS-Print
+  let xml = `<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Body>
+    <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
+      <text font="font_a" width="2" height="2" align="center">${BRAND_INFO.name.toUpperCase()}\\n</text>
+      <text align="center">Pedido: #${order.id.slice(0, 8)}\\n</text>
+      <feed unit="10"/>
+      <text align="left">Cliente: ${order.customer_name}\\n</text>
+      <text align="left">Tlf: ${order.customer_phone}\\n</text>
+      <text align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}\\n</text>
+      <text>------------------------------------------\\n</text>
+  `;
+
+  order.lines.forEach(l => {
+    const name = l.nameEs || l.nameEn || l.dishId;
+    xml += `<text font="font_a" width="1" height="1">${l.quantity}x ${name}\\n</text>`;
+  });
+
+  xml += `
+      <text>------------------------------------------\\n</text>
+      <text font="font_a" width="2" height="2" align="right">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}\\n</text>
+      <feed unit="30"/>
+      <text align="center">¡DE AQUI Y DE ALLA!\\n</text>
+      <cut type="feed"/>
+    </epos-print>
+  </s:Body>
+</s:Envelope>`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/xml; charset=utf-8",
+      "If-Modified-Since": "Thu, 01 Jan 1970 00:00:00 GMT"
+    },
+    body: xml
+  });
+
+  if (!response.ok) throw new Error("Printer connection failed");
+  return response.text();
+}
+
 /* ─── Order Card ─────────────────────────────────────────────────────── */
 
 function OrderCard({ order, onAdvance }: { order: Order; onAdvance: (order: Order, minutes?: number) => Promise<void> }) {
@@ -184,18 +234,26 @@ function OrderCard({ order, onAdvance }: { order: Order; onAdvance: (order: Orde
 
           {/* Imprimir Ticket */}
           <button
-            onClick={() => {
-              setOrderToPrint(order);
-              // Pequeño delay para que React renderice el contenido en el printable-area
-              setTimeout(() => {
-                window.print();
-              }, 100);
+            onClick={async () => {
+              if (isDirectPrintEnabled && printerIp) {
+                try {
+                  await sendToEpsonDirect(order, printerIp);
+                } catch (err) {
+                  alert("Error en impresión directa. Revisa la IP o usa el modo normal.");
+                  setOrderToPrint(order);
+                  setTimeout(() => window.print(), 100);
+                }
+              } else {
+                setOrderToPrint(order);
+                setTimeout(() => window.print(), 100);
+              }
             }}
             className={cn(
-              buttonVariants({ size: "sm", variant: "outline" }),
-              "px-3 shrink-0"
+              buttonVariants({ size: "sm", variant: isDirectPrintEnabled ? "default" : "outline" }),
+              "px-3 shrink-0",
+              isDirectPrintEnabled && "bg-blue-600 hover:bg-blue-700"
             )}
-            title="Imprimir ticket"
+            title={isDirectPrintEnabled ? "Impresión Directa Activa" : "Imprimir ticket"}
           >
             <Printer className="w-4 h-4" />
           </button>
@@ -266,6 +324,23 @@ export function AdminDashboard() {
   const [weeklySchedule, setWeeklySchedule] = useState<DaySchedule[]>(DEFAULT_DAILY_SCHEDULE);
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
   const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
+  const [printerIp, setPrinterIp] = useState("");
+  const [isDirectPrintEnabled, setIsDirectPrintEnabled] = useState(false);
+
+  // Cargar configuración de impresora desde localStorage
+  useEffect(() => {
+    const savedIp = localStorage.getItem("admin_printer_ip");
+    const savedEnabled = localStorage.getItem("admin_direct_print_enabled") === "true";
+    if (savedIp) setPrinterIp(savedIp);
+    setIsDirectPrintEnabled(savedEnabled);
+  }, []);
+
+  const savePrinterConfig = (ip: string, enabled: boolean) => {
+    setPrinterIp(ip);
+    setIsDirectPrintEnabled(enabled);
+    localStorage.setItem("admin_printer_ip", ip);
+    localStorage.setItem("admin_direct_print_enabled", String(enabled));
+  };
 
   // Request notification permissions
   useEffect(() => {
@@ -494,6 +569,60 @@ export function AdminDashboard() {
           </p>
         </div>
       )}
+
+      {/* ── Configuración de Impresora ── */}
+      <div className="bg-card border rounded-2xl p-5 space-y-4 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Printer className="w-5 h-5 text-primary" />
+            <h3 className="font-bold text-lg">Impresora Epson (WiFi)</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Impresión Directa:</span>
+            <button
+              onClick={() => savePrinterConfig(printerIp, !isDirectPrintEnabled)}
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ring-offset-background",
+                isDirectPrintEnabled ? "bg-blue-600" : "bg-muted"
+              )}
+            >
+              <span className={cn(
+                "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                isDirectPrintEnabled ? "translate-x-5" : "translate-x-0"
+              )} />
+            </button>
+          </div>
+        </div>
+        
+        {isDirectPrintEnabled && (
+          <div className="flex gap-3 items-end">
+            <div className="flex-1 space-y-1">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Dirección IP de la Impresora</label>
+              <input 
+                type="text" 
+                placeholder="Ej: 192.168.1.45"
+                value={printerIp}
+                onChange={(e) => savePrinterConfig(e.target.value, isDirectPrintEnabled)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+            <button 
+              onClick={() => {
+                const testOrder = { id: "TEST", customer_name: "PRUEBA", customer_phone: "000", created_at: new Date().toISOString(), total_cents: 0, lines: [] } as any;
+                sendToEpsonDirect(testOrder, printerIp).catch(() => alert("Error de conexión con la impresora."));
+              }}
+              className={cn(buttonVariants({ variant: "outline" }), "font-bold")}
+            >
+              Probar Conexión
+            </button>
+          </div>
+        )}
+        {!isDirectPrintEnabled && (
+          <p className="text-xs text-muted-foreground italic">
+            Usa el botón de la impresora en cada pedido para imprimir usando el diálogo del sistema. Activa la impresión directa para saltarte ese paso (requiere configurar la IP).
+          </p>
+        )}
+      </div>
 
       {/* ── Stats bar ── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
