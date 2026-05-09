@@ -16,5 +16,9 @@ export const BRAND_INFO = {
     mon_wed: "12:00 - 16:00",
     thu: "Cerrado",
     fri_sun: "12:00 - 21:30",
+  },
+  menuPdf: {
+    horizontal: "/images/MenuDeAquiYDeAllaHorizontal.pdf",
+    vertical: "/images/MenuDeAquiYDeAllaVertical.pdf",
   }
 } as const;

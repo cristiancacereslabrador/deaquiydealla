@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, startTransition } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { getStoreStatus } from "@/lib/store-status";
+import { getStoreStatus, DEFAULT_DAILY_SCHEDULE, type DaySchedule } from "@/lib/store-status";
 import { AlertTriangle, Clock, Coffee } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -13,25 +13,31 @@ import { cn } from "@/lib/utils";
  */
 export function StoreStatusBanner() {
   const [panicActive, setPanicActive] = useState(false);
+  const [scheduleData, setScheduleData] = useState<DaySchedule[]>(DEFAULT_DAILY_SCHEDULE);
   const [mounted, setMounted] = useState(false);
   // Refrescar cada minuto para que el banner cambie automáticamente al abrir/cerrar
   const [, setTick] = useState(0);
 
   useEffect(() => {
-    setMounted(true);
+    startTransition(() => setMounted(true));
     const supabase = createBrowserSupabaseClient();
 
-    // Carga inicial del estado de pánico
+    // Carga inicial del estado de pánico y horario
     supabase
       .from("store_settings")
-      .select("value")
-      .eq("id", "panic_button")
-      .single()
+      .select("id, value")
+      .in("id", ["panic_button", "weekly_schedule"])
       .then(({ data }) => {
-        if (data?.value?.active) setPanicActive(true);
+        if (data) {
+          const panic = data.find(d => d.id === "panic_button");
+          if (panic?.value?.active) setPanicActive(true);
+
+          const schedule = data.find(d => d.id === "weekly_schedule");
+          if (schedule?.value?.schedule) setScheduleData(schedule.value.schedule);
+        }
       });
 
-    // Suscripción en tiempo real al botón de pánico
+    // Suscripción en tiempo real a los ajustes
     const channel = supabase
       .channel("global_store_status")
       .on(
@@ -40,6 +46,9 @@ export function StoreStatusBanner() {
         (payload) => {
           if (payload.new.id === "panic_button") {
             setPanicActive(payload.new.value.active);
+          }
+          if (payload.new.id === "weekly_schedule") {
+            setScheduleData(payload.new.value.schedule);
           }
         }
       )
@@ -56,7 +65,7 @@ export function StoreStatusBanner() {
 
   if (!mounted) return null;
 
-  const { isOpen, reason, nextOpening } = getStoreStatus(panicActive);
+  const { isOpen, reason, nextOpening } = getStoreStatus(panicActive, scheduleData);
 
   if (isOpen) return null;
 
@@ -75,12 +84,12 @@ export function StoreStatusBanner() {
     bgColor = "bg-zinc-800";
     textColor = "text-white";
     icon = <Coffee className="w-4 h-4 shrink-0" />;
-    message = `☕ Hoy Jueves descansamos. Volvemos el viernes: 12:30–16:00 y 19:30–23:30. ¡Hasta pronto!`;
+    message = `☕ Hoy descansamos. Volvemos ${nextOpening}. ¡Hasta pronto!`;
   } else if (reason === "schedule") {
     bgColor = "bg-amber-500";
     textColor = "text-black";
     icon = <Clock className="w-4 h-4 shrink-0" />;
-    message = `🕐 Ahora cerrado. Abrimos ${nextOpening}. Horario: L–X, V–D · 12:30–16:00 / 19:30–23:30 · Jueves cerrado`;
+    message = `🕐 Ahora cerrado. Abrimos ${nextOpening}.`;
   }
 
   return (

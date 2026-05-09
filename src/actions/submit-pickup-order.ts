@@ -64,20 +64,25 @@ export async function submitPickupOrderAction(
   }
 
   try {
-    // ─── 1. Verificar botón de pánico ───────────────────────────────────────────
-    const { data: panicData } = await supabase
+    // ─── 1. Verificar botón de pánico y horario ───────────────────────────────────────────
+    const { data: settingsData } = await supabase
       .from("store_settings")
-      .select("value")
-      .eq("id", "panic_button")
-      .single();
+      .select("id, value")
+      .in("id", ["panic_button", "weekly_schedule"]);
 
-    const { getStoreStatus } = await import("@/lib/store-status");
-    const { isOpen, reason, nextOpening } = getStoreStatus(panicData?.value?.active ?? false);
+    const panicData = settingsData?.find((s: any) => s.id === "panic_button");
+    const scheduleData = settingsData?.find((s: any) => s.id === "weekly_schedule");
+
+    const { getStoreStatus, DEFAULT_DAILY_SCHEDULE } = await import("@/lib/store-status");
+    const { isOpen, reason, nextOpening } = getStoreStatus(
+      panicData?.value?.active ?? false,
+      scheduleData?.value?.schedule ?? DEFAULT_DAILY_SCHEDULE
+    );
 
     if (!isOpen) {
       let errorMsg = "paused";
       if (reason === "schedule") errorMsg = `Abrimos a las ${nextOpening}`;
-      if (reason === "closed_day") errorMsg = "Hoy Jueves estamos cerrados por descanso.";
+      if (reason === "closed_day") errorMsg = "Hoy estamos cerrados por descanso.";
 
       return {
         ok: false,

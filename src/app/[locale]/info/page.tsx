@@ -125,11 +125,24 @@ export default async function InfoPage({
             <p className="opacity-90">
               Descarga nuestra carta completa en PDF de alta definición para tenerla siempre a mano.
             </p>
+            {/* Versión PC (Horizontal) - Se muestra solo en md en adelante */}
             <a 
-              href="https://drive.google.com/file/d/1Nj0w1mObOY0xA8EtbZgH-7rj1V5wVVFk/view?usp=sharing" 
+              href={BRAND_INFO.menuPdf.horizontal} 
               target="_blank" 
               rel="noopener noreferrer"
-              className={cn(buttonVariants({ variant: "secondary", size: "lg" }), "w-full font-bold group flex items-center justify-center gap-2")}
+              download
+              className={cn(buttonVariants({ variant: "secondary", size: "lg" }), "hidden md:flex w-full font-bold group items-center justify-center gap-2")}
+            >
+              <Download className="w-5 h-5 group-hover:-translate-y-1 transition-transform" /> Descargar Menú PDF
+            </a>
+
+            {/* Versión Móvil (Vertical) - Se muestra solo en móvil/tablet (< md) */}
+            <a 
+              href={BRAND_INFO.menuPdf.vertical} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              download
+              className={cn(buttonVariants({ variant: "secondary", size: "lg" }), "flex md:hidden w-full font-bold group items-center justify-center gap-2")}
             >
               <Download className="w-5 h-5 group-hover:-translate-y-1 transition-transform" /> Descargar Menú PDF
             </a>

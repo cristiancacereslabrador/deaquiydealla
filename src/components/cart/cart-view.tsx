@@ -11,7 +11,7 @@ import { Minus, Plus, Trash2, Sparkles, AlertTriangle } from "lucide-react";
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { startTransition, useEffect, useMemo, useState } from "react";
-import { getStoreStatus } from "@/lib/store-status";
+import { getStoreStatus, DEFAULT_DAILY_SCHEDULE, type DaySchedule } from "@/lib/store-status";
 
 /**
  * Vista interactiva del carrito: líneas, cantidades, total y vaciar.
@@ -23,6 +23,7 @@ export function CartView({ allDishes }: { allDishes: any[] }) {
   const locale = useLocale();
   const [mounted, setMounted] = useState(false);
   const [panicActive, setPanicActive] = useState(false);
+  const [scheduleData, setScheduleData] = useState<DaySchedule[]>(DEFAULT_DAILY_SCHEDULE);
   const [outOfStockIds, setOutOfStockIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -30,14 +31,21 @@ export function CartView({ allDishes }: { allDishes: any[] }) {
     
     const supabase = createBrowserSupabaseClient();
 
-    // 1. Panic Button validation
-    supabase.from("store_settings").select("value").eq("id", "panic_button").single().then(({ data }) => {
-      if (data?.value?.active) setPanicActive(true);
+    // 1. Settings (Panic + Schedule) validation
+    supabase.from("store_settings").select("id, value").in("id", ["panic_button", "weekly_schedule"]).then(({ data }) => {
+      if (data) {
+        const panic = data.find(d => d.id === "panic_button");
+        if (panic?.value?.active) setPanicActive(true);
+
+        const schedule = data.find(d => d.id === "weekly_schedule");
+        if (schedule?.value?.schedule) setScheduleData(schedule.value.schedule);
+      }
     });
     
     const settingsChannel = supabase.channel("cart_store_settings")
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "store_settings" }, (payload) => {
         if (payload.new.id === "panic_button") setPanicActive(payload.new.value.active);
+        if (payload.new.id === "weekly_schedule") setScheduleData(payload.new.value.schedule);
       }).subscribe();
 
     // 2. Dish status validation
@@ -92,6 +100,7 @@ export function CartView({ allDishes }: { allDishes: any[] }) {
                    if (d.category === "entrantes") return true;
                    return false;
                  })
+                 // eslint-disable-next-line react-hooks/purity
                  .sort(() => Math.random() - 0.5) // Shuffle for variety
                  .slice(0, 3);
   }, [items, allDishes]);
@@ -110,7 +119,7 @@ export function CartView({ allDishes }: { allDishes: any[] }) {
     );
   }
 
-  const { isOpen, nextOpening, reason } = getStoreStatus(panicActive);
+  const { isOpen, nextOpening, reason } = getStoreStatus(panicActive, scheduleData);
 
   if (items.length === 0) {
     return (
@@ -235,16 +244,16 @@ export function CartView({ allDishes }: { allDishes: any[] }) {
                     </button>
                   </div>
                   <button
-                    type="button"
-                    className={cn(
-                      buttonVariants({ variant: "ghost", size: "sm" }),
-                      "text-destructive hover:text-destructive"
-                    )}
-                    onClick={() => removeItem(line.dishId)}
-                  >
-                    <Trash2 className="mr-1 size-4" />
-                    {t("remove")}
-                  </button>
+                     type="button"
+                     className={cn(
+                       buttonVariants({ variant: "ghost", size: "sm" }),
+                       "text-destructive hover:text-destructive"
+                     )}
+                     onClick={() => removeItem(line.dishId)}
+                   >
+                     <Trash2 className="mr-1 size-4" />
+                     {t("remove")}
+                   </button>
                 </div>
               </div>
             </li>

@@ -3,7 +3,7 @@
  * @description Configuración de horarios reales del restaurante (fuente: Google Maps).
  * Zona horaria: Europe/Madrid (Granada, España).
  *
- * Horario real:
+ * Horario real (por defecto):
  *  - Lunes, Martes, Miércoles: 12:00 – 16:00
  *  - Jueves: CERRADO
  *  - Viernes, Sábado, Domingo: 12:00 – 21:30
@@ -15,7 +15,7 @@ export type DaySchedule = {
 } | null; // null = cerrado ese día
 
 /** Índice 0 = Domingo, 1 = Lunes, ... 6 = Sábado */
-export const DAILY_SCHEDULE: DaySchedule[] = [
+export const DEFAULT_DAILY_SCHEDULE: DaySchedule[] = [
   { open: "12:00", close: "21:30" }, // 0 Domingo
   { open: "12:00", close: "16:00" }, // 1 Lunes
   { open: "12:00", close: "16:00" }, // 2 Martes
@@ -69,10 +69,10 @@ function getNowInGranada() {
 /**
  * @description Obtiene el texto de próxima apertura buscando el siguiente día abierto.
  */
-function getNextOpeningText(fromDay: number): string {
+function getNextOpeningText(fromDay: number, scheduleData: DaySchedule[]): string {
   for (let i = 1; i <= 7; i++) {
     const nextDay = (fromDay + i) % 7;
-    const schedule = DAILY_SCHEDULE[nextDay];
+    const schedule = scheduleData[nextDay];
     if (schedule) {
       const dayName = DAY_NAMES_ES[nextDay];
       const label = i === 1 ? "mañana" : `el ${dayName}`;
@@ -85,19 +85,23 @@ function getNextOpeningText(fromDay: number): string {
 /**
  * @description Verifica si el local está abierto basándose en el horario real de Granada y el estado de pánico.
  * @param {boolean} panicActive - Si el cierre temporal manual está activado.
+ * @param {DaySchedule[]} scheduleData - Horario semanal dinámico.
  * @returns {StoreStatus} Estado detallado del local.
  */
-export function getStoreStatus(panicActive: boolean): StoreStatus {
+export function getStoreStatus(
+  panicActive: boolean,
+  scheduleData: DaySchedule[] = DEFAULT_DAILY_SCHEDULE
+): StoreStatus {
   if (panicActive) {
     return { isOpen: false, reason: "panic" };
   }
 
   const { dayNumber, totalMinutes } = getNowInGranada();
-  const todaySchedule = DAILY_SCHEDULE[dayNumber];
+  const todaySchedule = scheduleData[dayNumber];
 
   // Día sin horario = cerrado ese día
   if (!todaySchedule) {
-    const nextOpening = getNextOpeningText(dayNumber);
+    const nextOpening = getNextOpeningText(dayNumber, scheduleData);
     return { isOpen: false, reason: "closed_day", nextOpening };
   }
 
@@ -124,15 +128,16 @@ export function getStoreStatus(panicActive: boolean): StoreStatus {
   return {
     isOpen: false,
     reason: "schedule",
-    nextOpening: getNextOpeningText(dayNumber),
+    nextOpening: getNextOpeningText(dayNumber, scheduleData),
   };
 }
 
 /** Para uso en el admin: devuelve el horario de hoy como texto legible */
-export function getTodayScheduleText(): string {
+export function getTodayScheduleText(scheduleData: DaySchedule[] = DEFAULT_DAILY_SCHEDULE): string {
   const { dayNumber } = getNowInGranada();
-  const schedule = DAILY_SCHEDULE[dayNumber];
+  const schedule = scheduleData[dayNumber];
   if (!schedule) return "Cerrado hoy";
   return `${schedule.open} – ${schedule.close}`;
 }
+
 

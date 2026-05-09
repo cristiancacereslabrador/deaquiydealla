@@ -158,11 +158,25 @@ export default async function ContactPage() {
                 <p className="opacity-90 relative z-10 text-sm">
                   Descarga nuestra carta completa en PDF para tenerla siempre a mano.
                 </p>
+                {/* Versión PC (Horizontal) */}
                 <a 
-                  href="https://drive.google.com/file/d/1Nj0w1mObOY0xA8EtbZgH-7rj1V5wVVFk/view?usp=sharing" 
+                  href={BRAND_INFO.menuPdf.horizontal} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="w-full bg-[#ffc244] hover:bg-[#ffb000] text-black font-bold py-4 rounded-xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] shadow-lg relative z-10"
+                  download
+                  className="hidden md:flex w-full bg-[#ffc244] hover:bg-[#ffb000] text-black font-bold py-4 rounded-xl items-center justify-center gap-3 transition-all hover:scale-[1.02] shadow-lg relative z-10"
+                >
+                  <Download className="w-5 h-5 animate-bounce" /> 
+                  Descargar Menú PDF
+                </a>
+
+                {/* Versión Móvil (Vertical) */}
+                <a 
+                  href={BRAND_INFO.menuPdf.vertical} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  download
+                  className="flex md:hidden w-full bg-[#ffc244] hover:bg-[#ffb000] text-black font-bold py-4 rounded-xl items-center justify-center gap-3 transition-all hover:scale-[1.02] shadow-lg relative z-10"
                 >
                   <Download className="w-5 h-5 animate-bounce" /> 
                   Descargar Menú PDF

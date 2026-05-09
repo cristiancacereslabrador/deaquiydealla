@@ -16,12 +16,15 @@ import {
   AlertTriangle,
   Phone,
   MessageCircle,
+  Printer,
+  CalendarRange,
+  Volume2,
   Zap,
   ChefHat,
   DoorClosed,
   DoorOpen,
 } from "lucide-react";
-import { getStoreStatus } from "@/lib/store-status";
+import { getStoreStatus, DEFAULT_DAILY_SCHEDULE, type DaySchedule } from "@/lib/store-status";
 
 /* ─── Types ────────────────────────────────────────────────────────────── */
 
@@ -83,8 +86,9 @@ const COLUMN_CONFIG: Record<Column, { label: string; color: string; bg: string; 
 
 /* ─── WhatsApp message builders ────────────────────────────────────────── */
 
-function buildAcceptedMessage(order: Order): string {
-  return `*Hola ${order.customer_name}!*\n\nHemos recibido tu pedido *#${order.id.slice(0, 8)}* y ya estamos en la cocina preparando tus platos 🥡\n\nTe avisaremos por aquí mismo en cuanto esté listo para recoger.\n\n_De Aquí y De Allá_`;
+function buildAcceptedMessage(order: Order, minutes?: number): string {
+  const timeMsg = minutes ? `\n\nEstará listo en unos *${minutes} minutos* aproximadamente 🕒` : "";
+  return `*Hola ${order.customer_name}!*\n\nHemos recibido tu pedido *#${order.id.slice(0, 8)}* y ya estamos en la cocina preparando tus platos 🥡${timeMsg}\n\nTe avisaremos por aquí mismo en cuanto esté listo para recoger.\n\n_De Aquí y De Allá_`;
 }
 
 function buildReadyMessage(order: Order): string {
@@ -100,8 +104,9 @@ function waUrl(phone: string, message: string): string {
 
 /* ─── Order Card ─────────────────────────────────────────────────────── */
 
-function OrderCard({ order, onAdvance }: { order: Order; onAdvance: (order: Order) => Promise<void> }) {
+function OrderCard({ order, onAdvance }: { order: Order; onAdvance: (order: Order, minutes?: number) => Promise<void> }) {
   const col = COLUMN_CONFIG[order.status as Column];
+  // eslint-disable-next-line react-hooks/purity
   const elapsed = Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60000);
   const isUrgent = elapsed > 20 && order.status !== "ready";
 
@@ -162,33 +167,84 @@ function OrderCard({ order, onAdvance }: { order: Order; onAdvance: (order: Orde
 
       {/* Actions */}
       <div className="flex flex-col gap-2 pt-1 border-t border-border/40">
-        {/* WhatsApp button */}
-        <a
-          href={waUrl(order.customer_phone, whatsappMessage)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            buttonVariants({ size: "sm" }),
-            "w-full justify-center gap-1.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white border-0 text-xs"
-          )}
-        >
-          <MessageCircle className="w-3.5 h-3.5" />
-          <Phone className="w-3 h-3 opacity-60" />{order.customer_phone}
-        </a>
+        <div className="flex gap-2">
+          {/* WhatsApp button */}
+          <a
+            href={waUrl(order.customer_phone, whatsappMessage)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ size: "sm" }),
+              "flex-1 justify-center gap-1.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white border-0 text-xs"
+            )}
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            WhatsApp
+          </a>
+
+          {/* Imprimir Ticket */}
+          <button
+            onClick={() => {
+              setOrderToPrint(order);
+              // Pequeño delay para que React renderice el contenido en el printable-area
+              setTimeout(() => {
+                window.print();
+              }, 100);
+            }}
+            className={cn(
+              buttonVariants({ size: "sm", variant: "outline" }),
+              "px-3 shrink-0"
+            )}
+            title="Imprimir ticket"
+          >
+            <Printer className="w-4 h-4" />
+          </button>
+        </div>
 
         {/* Advance status button */}
         {col.next && (
-          <button
-            onClick={() => onAdvance(order)}
-            className={cn(
-              buttonVariants({ size: "sm" }),
-              "w-full justify-center gap-1.5 text-xs font-bold"
-            )}
-          >
-            {col.nextIcon} {col.nextLabel}
-          </button>
+          order.status === "pending" ? (
+            <div className="space-y-2">
+              <p className="text-[10px] text-center font-bold text-orange-600 uppercase">¿En cuánto tiempo estará?</p>
+              <div className="grid grid-cols-4 gap-1">
+                {[5, 10, 15, 20].map(mins => (
+                  <button
+                    key={mins}
+                    onClick={() => onAdvance(order, mins)}
+                    className={cn(
+                      buttonVariants({ size: "sm", variant: "outline" }),
+                      "h-8 text-[10px] px-0 font-bold border-orange-200 hover:bg-orange-100 hover:text-orange-700"
+                    )}
+                  >
+                    {mins}'
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => onAdvance(order)}
+                className={cn(
+                  buttonVariants({ size: "sm", variant: "ghost" }),
+                  "w-full h-7 text-[9px] text-muted-foreground underline"
+                )}
+              >
+                Aceptar sin tiempo
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => onAdvance(order)}
+              className={cn(
+                buttonVariants({ size: "sm" }),
+                "w-full justify-center gap-1.5 text-xs font-bold"
+              )}
+            >
+              {col.nextIcon} {col.nextLabel}
+            </button>
+          )
         )}
       </div>
+
+      {/* Remove individual hidden tickets as we use a global one now */}
     </div>
   );
 }
@@ -205,19 +261,37 @@ export function AdminDashboard() {
   const [panicActive, setPanicActive] = useState(false);
   const [outOfStock, setOutOfStock] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [combinedDishes, setCombinedDishes] = useState<any[]>([]);
+  const [weeklySchedule, setWeeklySchedule] = useState<DaySchedule[]>(DEFAULT_DAILY_SCHEDULE);
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false);
+  const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
+
+  // Request notification permissions
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
 
   /* ── Initial data load ── */
   useEffect(() => {
     Promise.all([
       supabase.from("pedidos").select("*").order("created_at", { ascending: true }).limit(100),
-      supabase.from("store_settings").select("*").eq("id", "panic_button").single(),
+      supabase.from("store_settings").select("id, value").in("id", ["panic_button", "weekly_schedule"]),
       supabase.from("dish_status").select("*"),
       supabase.from("custom_dishes").select("*").is("deleted_at", null),
       supabase.from("dish_price_overrides").select("*"),
-    ]).then(([ordersRes, panicRes, stockRes, customRes, overridesRes]) => {
+    ]).then(([ordersRes, settingsRes, stockRes, customRes, overridesRes]) => {
       if (ordersRes.data) setOrders(ordersRes.data as Order[]);
-      if (panicRes.data?.value?.active) setPanicActive(true);
+      
+      if (settingsRes.data) {
+        const panic = settingsRes.data.find(s => s.id === "panic_button");
+        if (panic?.value?.active) setPanicActive(true);
+
+        const schedule = settingsRes.data.find(s => s.id === "weekly_schedule");
+        if (schedule?.value?.schedule) setWeeklySchedule(schedule.value.schedule);
+      }
       
       const overrides = overridesRes.data || [];
       const deletedStaticIds = new Set(overrides.filter(o => o.is_deleted).map(o => o.dish_id));
@@ -257,12 +331,21 @@ export function AdminDashboard() {
         setOrders(prev => [...prev, payload.new as Order]);
         const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
         audio.play().catch(() => {});
+        
+        if ("Notification" in window && Notification.permission === "granted") {
+          const newOrder = payload.new as Order;
+          new Notification("¡Nuevo Pedido Web!", {
+            body: `Pedido de ${newOrder.customer_name} por ${formatCentsToCurrency(newOrder.total_cents, "es")}`,
+            icon: "/hugo.png"
+          });
+        }
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "pedidos" }, (payload) => {
         setOrders(prev => prev.map(o => o.id === payload.new.id ? payload.new as Order : o));
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "store_settings" }, (payload) => {
         if (payload.new.id === "panic_button") setPanicActive(payload.new.value.active);
+        if (payload.new.id === "weekly_schedule") setWeeklySchedule(payload.new.value.schedule);
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "dish_status" }, (payload) => {
         const row = payload.new as DishStatus;
@@ -274,7 +357,7 @@ export function AdminDashboard() {
   }, [supabase]);
 
   /* ── Advance order status ── */
-  const advanceOrder = useCallback(async (order: Order) => {
+  const advanceOrder = useCallback(async (order: Order, minutes?: number) => {
     const statusFlow: Record<string, Order["status"]> = {
       pending: "accepted",
       accepted: "ready",
@@ -286,7 +369,7 @@ export function AdminDashboard() {
     try {
       await supabase.from("pedidos").update({ status: next }).eq("id", order.id);
       if (next === "accepted") {
-        window.open(waUrl(order.customer_phone, buildAcceptedMessage(order)), "_blank");
+        window.open(waUrl(order.customer_phone, buildAcceptedMessage(order, minutes)), "_blank");
       } else if (next === "ready") {
         window.open(waUrl(order.customer_phone, buildReadyMessage(order)), "_blank");
       }
@@ -317,6 +400,21 @@ export function AdminDashboard() {
     }
   }
 
+  /* ── Save Schedule ── */
+  async function saveSchedule(newSchedule: DaySchedule[]) {
+    try {
+      await supabase.from("store_settings").upsert({
+        id: "weekly_schedule",
+        value: { schedule: newSchedule },
+        updated_at: new Date().toISOString()
+      });
+      setWeeklySchedule(newSchedule);
+      setIsEditingSchedule(false);
+    } catch (err) {
+      LoggerService.error("AdminDashboard:saveSchedule", err);
+    }
+  }
+
   /* ── Derived state ── */
   const activeOrders = orders.filter(o => o.status !== "completed");
   const columns: Column[] = ["pending", "accepted", "ready"];
@@ -338,8 +436,67 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* ── Hidden Printable Ticket (CSS handles visibility) ── */}
+      {orderToPrint && (
+        <div id="printable-ticket" className="hidden print:block fixed inset-0 z-[999] bg-white text-black p-0 font-mono text-[13px] w-[80mm]">
+          <style dangerouslySetInnerHTML={{ __html: `
+            @media print {
+              body * { visibility: hidden !important; }
+              #printable-ticket, #printable-ticket * { visibility: visible !important; }
+              #printable-ticket { position: fixed; left: 0; top: 0; width: 80mm; height: auto; margin: 0; padding: 10px; background: white; }
+              @page { margin: 0; size: 80mm auto; }
+            }
+          `}} />
+          <div className="text-center space-y-1">
+            <h1 className="text-lg font-bold uppercase">{BRAND_INFO.name}</h1>
+            <p className="text-[11px] font-bold">Pedido: #{orderToPrint.id.slice(0, 8)}</p>
+            <div className="border-b border-dashed border-black my-2" />
+          </div>
+
+          <div className="space-y-1 mb-2">
+            <div className="flex justify-between"><span>Cliente:</span><span className="font-bold">{orderToPrint.customer_name}</span></div>
+            <div className="flex justify-between"><span>Teléfono:</span><span>{orderToPrint.customer_phone}</span></div>
+            <div className="flex justify-between"><span>Fecha/Hora:</span><span>{new Date(orderToPrint.created_at).toLocaleString("es-ES")}</span></div>
+          </div>
+
+          <div className="border-b border-dashed border-black my-2" />
+          
+          <ul className="space-y-1.5">
+            {orderToPrint.lines.map((l, i) => (
+              <li key={i} className="flex flex-col">
+                <div className="flex justify-between gap-2">
+                  <span className="font-bold text-sm leading-tight">
+                    {l.quantity}x {l.nameEs ?? l.nameEn ?? l.dishId}
+                  </span>
+                  <span className="shrink-0">{formatCentsToCurrency(l.unitPriceCents * l.quantity, "es")}</span>
+                </div>
+                {/* Desglose de alérgenos por plato si es necesario, o global abajo */}
+              </li>
+            ))}
+          </ul>
+
+          <div className="border-b border-dashed border-black my-2" />
+
+          {orderToPrint.notes && (
+            <div className="mb-2">
+              <span className="font-bold">Notas:</span> {orderToPrint.notes}
+            </div>
+          )}
+
+          <div className="flex justify-between text-base font-bold">
+            <span>TOTAL:</span>
+            <span>{formatCentsToCurrency(orderToPrint.total_cents, "es")}</span>
+          </div>
+
+          <div className="border-b border-dashed border-black my-2" />
+          <p className="text-center text-[10px] italic mt-2 uppercase tracking-widest">
+            ¡De Aquí y De Allá!
+          </p>
+        </div>
+      )}
+
       {/* ── Stats bar ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="bg-card border rounded-xl p-4 text-center">
           <p className="text-2xl font-bold text-primary">{pendingCount}</p>
           <p className="text-xs text-muted-foreground">Pendientes ahora</p>
@@ -356,6 +513,18 @@ export function AdminDashboard() {
           <p className="text-xl font-bold text-primary">{formatCentsToCurrency(todayRevenue, "es")}</p>
           <p className="text-xs text-muted-foreground">Facturado hoy</p>
         </div>
+        <button 
+          onClick={() => {
+            const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+            audio.play().catch(() => alert("Por favor, interactúa con la página primero para permitir sonidos."));
+          }}
+          className="bg-card border rounded-xl p-4 text-center hover:bg-muted transition-colors group"
+        >
+          <div className="flex flex-col items-center gap-1">
+            <Volume2 className="w-6 h-6 text-primary group-hover:scale-110 transition-transform" />
+            <p className="text-xs font-bold">Probar Sonido</p>
+          </div>
+        </button>
       </div>
 
       {/* ── Panic / Cierre temporal ── */}
@@ -485,6 +654,116 @@ export function AdminDashboard() {
           ))}
         </div>
       </section>
+
+      {/* ── Schedule panel ── */}
+      <section className="bg-card border rounded-xl overflow-hidden shadow-sm">
+        <div className="px-5 py-4 border-b bg-muted/30 flex items-center justify-between">
+          <div className="flex items-center gap-2 font-bold">
+            <CalendarRange className="w-5 h-5 text-primary" /> 
+            Horario Semanal
+          </div>
+          <button
+            onClick={() => setIsEditingSchedule(!isEditingSchedule)}
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "text-xs")}
+          >
+            {isEditingSchedule ? "Cancelar" : "Editar Horario"}
+          </button>
+        </div>
+        <div className="p-5">
+          {isEditingSchedule ? (
+            <ScheduleEditor schedule={weeklySchedule} onSave={saveSchedule} />
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-4">
+              {["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"].map((day, idx) => {
+                const s = weeklySchedule[idx];
+                return (
+                  <div key={idx} className="flex justify-between items-center p-3 rounded-lg border bg-muted/20">
+                    <span className="font-bold text-sm">{day}</span>
+                    <span className={cn("text-sm", !s ? "text-red-500 font-bold" : "text-muted-foreground")}>
+                      {s ? `${s.open} - ${s.close}` : "Cerrado"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ScheduleEditor({ schedule, onSave }: { schedule: DaySchedule[], onSave: (s: DaySchedule[]) => Promise<void> }) {
+  const [localSchedule, setLocalSchedule] = useState<DaySchedule[]>(schedule);
+  const [saving, setSaving] = useState(false);
+  const days = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave(localSchedule);
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {days.map((day, idx) => {
+          const s = localSchedule[idx];
+          return (
+            <div key={idx} className="p-3 rounded-lg border bg-background space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sm">{day}</span>
+                <label className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={s !== null}
+                    onChange={(e) => {
+                      const newSched = [...localSchedule];
+                      newSched[idx] = e.target.checked ? { open: "12:00", close: "21:30" } : null;
+                      setLocalSchedule(newSched);
+                    }}
+                    className="rounded border-input text-primary focus:ring-primary"
+                  />
+                  Abierto
+                </label>
+              </div>
+              {s && (
+                <div className="flex gap-2">
+                  <input
+                    type="time"
+                    value={s.open}
+                    onChange={(e) => {
+                      const newSched = [...localSchedule];
+                      newSched[idx] = { ...s, open: e.target.value };
+                      setLocalSchedule(newSched);
+                    }}
+                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm"
+                  />
+                  <input
+                    type="time"
+                    value={s.close}
+                    onChange={(e) => {
+                      const newSched = [...localSchedule];
+                      newSched[idx] = { ...s, close: e.target.value };
+                      setLocalSchedule(newSched);
+                    }}
+                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm"
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex justify-end pt-2">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className={cn(buttonVariants(), "w-full sm:w-auto")}
+        >
+          {saving ? "Guardando..." : "Guardar Cambios"}
+        </button>
+      </div>
     </div>
   );
 }
