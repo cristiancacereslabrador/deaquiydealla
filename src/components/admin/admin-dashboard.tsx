@@ -154,7 +154,19 @@ async function sendToEpsonDirect(order: Order, ip: string) {
 
 /* ─── Order Card ─────────────────────────────────────────────────────── */
 
-function OrderCard({ order, onAdvance }: { order: Order; onAdvance: (order: Order, minutes?: number) => Promise<void> }) {
+function OrderCard({ 
+  order, 
+  onAdvance,
+  printerIp,
+  isDirectPrintEnabled,
+  onPrintManual
+}: { 
+  order: Order; 
+  onAdvance: (order: Order, minutes?: number) => Promise<void>;
+  printerIp: string;
+  isDirectPrintEnabled: boolean;
+  onPrintManual: (order: Order) => void;
+}) {
   const col = COLUMN_CONFIG[order.status as Column];
   // eslint-disable-next-line react-hooks/purity
   const elapsed = Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60000);
@@ -240,12 +252,10 @@ function OrderCard({ order, onAdvance }: { order: Order; onAdvance: (order: Orde
                   await sendToEpsonDirect(order, printerIp);
                 } catch (err) {
                   alert("Error en impresión directa. Revisa la IP o usa el modo normal.");
-                  setOrderToPrint(order);
-                  setTimeout(() => window.print(), 100);
+                  onPrintManual(order);
                 }
               } else {
-                setOrderToPrint(order);
-                setTimeout(() => window.print(), 100);
+                onPrintManual(order);
               }
             }}
             className={cn(
@@ -735,7 +745,17 @@ export function AdminDashboard() {
                   </div>
                 ) : (
                   colOrders.map(order => (
-                    <OrderCard key={order.id} order={order} onAdvance={advanceOrder} />
+                    <OrderCard 
+                      key={order.id} 
+                      order={order} 
+                      onAdvance={advanceOrder} 
+                      printerIp={printerIp}
+                      isDirectPrintEnabled={isDirectPrintEnabled}
+                      onPrintManual={(o) => {
+                        setOrderToPrint(o);
+                        setTimeout(() => window.print(), 100);
+                      }}
+                    />
                   ))
                 )}
               </div>
