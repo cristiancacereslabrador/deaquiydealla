@@ -110,9 +110,9 @@ export default async function HomePage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
             {[
               { title: "ARROCES", img: "/images/dishes/arroz-especial.png" },
-              { title: "TALLARINES", img: "/images/dishes/combo-costillas.png" },
-              { title: "POLLOS", img: "/images/dishes/gambas-agridulce.png" },
-              { title: "ENTRANTES", img: "/images/dishes/arroz-especial.png" },
+              { title: "TALLARINES", img: "/images/dishes/category-tallarines.png" },
+              { title: "POLLOS", img: "/images/dishes/category-pollo.png" },
+              { title: "ENTRANTES", img: "/images/dishes/category-entrantes.png" },
             ].map((cat, i) => (
               <div key={i} className="group bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-sm border border-border/40 dark:border-white/10 overflow-hidden hover:shadow-md transition-shadow">
                 <div className="relative aspect-[4/3] bg-muted/20 p-4">
