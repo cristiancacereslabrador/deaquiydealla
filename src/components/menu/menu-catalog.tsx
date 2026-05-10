@@ -13,10 +13,16 @@ interface DBCategory {
   name_en: string;
 }
 
-export function MenuCatalog({ dishes }: { dishes: readonly Dish[] }) {
+export function MenuCatalog({ dishes, initialCategory }: { dishes: readonly Dish[], initialCategory?: string }) {
   const t = useTranslations("Catalog");
   const locale = useLocale();
-  const [active, setActive] = useState<string>("all");
+  const [active, setActive] = useState<string>(initialCategory || "all");
+
+  useEffect(() => {
+    if (initialCategory) {
+      setActive(initialCategory);
+    }
+  }, [initialCategory]);
   const [outOfStockIds, setOutOfStockIds] = useState<Set<string>>(new Set());
   const [categories, setCategories] = useState<DBCategory[]>([]);
 

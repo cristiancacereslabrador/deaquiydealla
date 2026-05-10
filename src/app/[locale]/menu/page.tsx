@@ -3,7 +3,8 @@ import { DISHES, Dish } from "@/data/dishes";
 import { getTranslations } from "next-intl/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-export default async function MenuPage() {
+export default async function MenuPage({ searchParams }: { searchParams: Promise<{ cat?: string }> }) {
+  const { cat } = await searchParams;
   const t = await getTranslations("MenuPage");
   const supabase = await createServerSupabaseClient();
 
@@ -57,7 +58,7 @@ export default async function MenuPage() {
         </h1>
         <p className="text-muted-foreground">{t("intro")}</p>
       </header>
-      <MenuCatalog dishes={allDishes} />
+      <MenuCatalog dishes={allDishes} initialCategory={cat} />
     </div>
   );
 }
