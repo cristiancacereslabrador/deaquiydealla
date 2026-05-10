@@ -667,57 +667,67 @@ export function AdminDashboard() {
       </div>
 
       {/* ── Panic / Cierre temporal ── */}
-      <div className={cn(
-        "w-full rounded-2xl border-2 overflow-hidden transition-all duration-300",
-        panicActive
-          ? "border-red-600 bg-red-950/20"
-          : "border-border bg-card"
-      )}>
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5">
-          <div className="flex items-center gap-3">
-            {panicActive ? (
-              <DoorClosed className="w-8 h-8 text-red-500 shrink-0" />
-            ) : (
-              <DoorOpen className="w-8 h-8 text-green-500 shrink-0" />
-            )}
-            <div>
-              <p className={cn("text-lg font-bold", panicActive ? "text-red-400" : "text-foreground")}>
-                {panicActive ? "🔴 Local cerrado temporalmente" : "🟢 Local abierto"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {panicActive
-                  ? (() => {
-                      const { nextOpening } = getStoreStatus(false);
-                      return `Próxima apertura: ${nextOpening ?? "según horario"}`;
-                    })()
-                  : "Recibiendo pedidos online con normalidad"
-                }
-              </p>
+      {(() => {
+        const { isOpen, nextOpening, reason } = getStoreStatus(panicActive, weeklySchedule);
+        return (
+          <div className={cn(
+            "w-full rounded-2xl border-2 overflow-hidden transition-all duration-300",
+            !isOpen
+              ? (reason === "panic" ? "border-red-600 bg-red-950/20" : "border-amber-600 bg-amber-950/10")
+              : "border-border bg-card"
+          )}>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5">
+              <div className="flex items-center gap-3">
+                {!isOpen ? (
+                  <DoorClosed className={cn("w-8 h-8 shrink-0", reason === "panic" ? "text-red-500" : "text-amber-500")} />
+                ) : (
+                  <DoorOpen className="w-8 h-8 text-green-500 shrink-0" />
+                )}
+                <div>
+                  <p className={cn("text-lg font-bold", !isOpen ? (reason === "panic" ? "text-red-400" : "text-amber-500") : "text-foreground")}>
+                    {!isOpen 
+                      ? (reason === "panic" ? "🔴 Local cerrado (Manual)" : "🟠 Local cerrado (Horario)")
+                      : "🟢 Local abierto"
+                    }
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {!isOpen
+                      ? `Próxima apertura: ${nextOpening ?? "según horario"}`
+                      : "Recibiendo pedidos online con normalidad"
+                    }
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={togglePanic}
+                className={cn(
+                  buttonVariants({ size: "lg" }),
+                  "shrink-0 font-bold gap-2 px-8",
+                  panicActive
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : "bg-red-600 hover:bg-red-700 text-white"
+                )}
+              >
+                {panicActive ? (
+                  <><DoorOpen className="w-5 h-5" /> Reabrir local</>
+                ) : (
+                  <><DoorClosed className="w-5 h-5" /> Cerrar temporalmente</>
+                )}
+              </button>
             </div>
-          </div>
-          <button
-            onClick={togglePanic}
-            className={cn(
-              buttonVariants({ size: "lg" }),
-              "shrink-0 font-bold gap-2 px-8",
-              panicActive
-                ? "bg-green-600 hover:bg-green-700 text-white"
-                : "bg-red-600 hover:bg-red-700 text-white"
+            {panicActive && (
+              <div className="px-5 pb-4 text-xs text-red-400/80 border-t border-red-800/30 pt-3">
+                ⚠️ Has cerrado el local manualmente. Los clientes no pueden pedir aunque estés en horario comercial.
+              </div>
             )}
-          >
-            {panicActive ? (
-              <><DoorOpen className="w-5 h-5" /> Reabrir local</>
-            ) : (
-              <><DoorClosed className="w-5 h-5" /> Cerrar temporalmente</>
+            {!panicActive && !isOpen && (
+              <div className="px-5 pb-4 text-xs text-amber-400/80 border-t border-amber-800/20 pt-3">
+                ℹ️ El local está cerrado por horario. El botón "Cerrar temporalmente" sirve para evitar que se abra automáticamente al llegar la hora de apertura.
+              </div>
             )}
-          </button>
-        </div>
-        {panicActive && (
-          <div className="px-5 pb-4 text-xs text-red-400/80 border-t border-red-800/30 pt-3">
-            ⚠️ Los clientes ven el aviso de cierre en toda la web y no pueden hacer pedidos.
           </div>
-        )}
-      </div>
+        );
+      })()}
 
       {/* ── Kanban columns ── */}
       <div className="grid md:grid-cols-3 gap-4">
