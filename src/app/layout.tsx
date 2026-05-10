@@ -45,8 +45,8 @@ export const metadata: Metadata = {
   },
   formatDetection: { telephone: false },
   icons: {
-    icon: "/images/splash-icon.png",
-    apple: "/images/splash-icon.png",
+    icon: "/images/logo.png",
+    apple: "/images/logo.png",
   },
 };
 
