@@ -45,6 +45,7 @@ interface Order {
   created_at: string;
   notes?: string | null;
   lines: OrderLine[];
+  estimated_minutes?: number | null;
 }
 
 interface DishStatus {
@@ -326,7 +327,7 @@ function OrderCard({
 export function AdminDashboard() {
   const supabase = createBrowserSupabaseClient();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [panicActive, setPanicActive] = useState(false);
+  const [manualStatus, setManualStatus] = useState<"open" | "closed" | null>(null);
   const [outOfStock, setOutOfStock] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -371,8 +372,8 @@ export function AdminDashboard() {
       if (ordersRes.data) setOrders(ordersRes.data as Order[]);
       
       if (settingsRes.data) {
-        const panic = settingsRes.data.find(s => s.id === "panic_button");
-        if (panic?.value?.active) setPanicActive(true);
+        const status = settingsRes.data.find(s => s.id === "store_status");
+        if (status?.value?.manual_override) setManualStatus(status.value.manual_override);
 
         const schedule = settingsRes.data.find(s => s.id === "weekly_schedule");
         if (schedule?.value?.schedule) setWeeklySchedule(schedule.value.schedule);
@@ -429,7 +430,7 @@ export function AdminDashboard() {
         setOrders(prev => prev.map(o => o.id === payload.new.id ? payload.new as Order : o));
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "store_settings" }, (payload) => {
-        if (payload.new.id === "panic_button") setPanicActive(payload.new.value.active);
+        if (payload.new.id === "store_status") setManualStatus(payload.new.value.manual_override);
         if (payload.new.id === "weekly_schedule") setWeeklySchedule(payload.new.value.schedule);
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "dish_status" }, (payload) => {
@@ -452,7 +453,11 @@ export function AdminDashboard() {
     if (!next) return;
 
     try {
-      await supabase.from("pedidos").update({ status: next }).eq("id", order.id);
+      const updateData: any = { status: next };
+      if (minutes) updateData.estimated_minutes = minutes;
+      
+      await supabase.from("pedidos").update(updateData).eq("id", order.id);
+      
       if (next === "accepted") {
         window.open(waUrl(order.customer_phone, buildAcceptedMessage(order, minutes)), "_blank");
       } else if (next === "ready") {
@@ -463,14 +468,17 @@ export function AdminDashboard() {
     }
   }, [supabase]);
 
-  /* ── Toggle panic ── */
-  async function togglePanic() {
+  /* ── Toggle manual status ── */
+  async function updateManualStatus(status: "open" | "closed" | null) {
     try {
-      const newVal = !panicActive;
-      await supabase.from("store_settings").upsert({ id: "panic_button", value: { active: newVal }, updated_at: new Date().toISOString() });
-      setPanicActive(newVal);
+      await supabase.from("store_settings").upsert({ 
+        id: "store_status", 
+        value: { manual_override: status }, 
+        updated_at: new Date().toISOString() 
+      });
+      setManualStatus(status);
     } catch (err) {
-      LoggerService.error("AdminDashboard:togglePanic", err);
+      LoggerService.error("AdminDashboard:updateManualStatus", err);
     }
   }
 
@@ -666,15 +674,17 @@ export function AdminDashboard() {
         </button>
       </div>
 
-      {/* ── Panic / Cierre temporal ── */}
+      {/* ── Control de Apertura Manual ── */}
       {(() => {
-        const { isOpen, nextOpening, reason } = getStoreStatus(panicActive, weeklySchedule);
+        const { isOpen, nextOpening, reason } = getStoreStatus(manualStatus, weeklySchedule);
+        const isCurrentlyAuto = manualStatus === null;
+
         return (
           <div className={cn(
             "w-full rounded-2xl border-2 overflow-hidden transition-all duration-300",
             !isOpen
               ? (reason === "panic" ? "border-red-600 bg-red-950/20" : "border-amber-600 bg-amber-950/10")
-              : "border-border bg-card"
+              : (manualStatus === "open" ? "border-green-600 bg-green-950/20" : "border-border bg-card")
           )}>
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5">
               <div className="flex items-center gap-3">
@@ -686,8 +696,8 @@ export function AdminDashboard() {
                 <div>
                   <p className={cn("text-lg font-bold", !isOpen ? (reason === "panic" ? "text-red-400" : "text-amber-500") : "text-foreground")}>
                     {!isOpen 
-                      ? (reason === "panic" ? "🔴 Local cerrado (Manual)" : "🟠 Local cerrado (Horario)")
-                      : "🟢 Local abierto"
+                      ? (reason === "panic" ? "🔴 Local cerrado manualmente" : "🟠 Local cerrado (Horario)")
+                      : (manualStatus === "open" ? "🟢 Local abierto manualmente" : "🟢 Local abierto")
                     }
                   </p>
                   <p className="text-sm text-muted-foreground">
@@ -698,31 +708,45 @@ export function AdminDashboard() {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={togglePanic}
-                className={cn(
-                  buttonVariants({ size: "lg" }),
-                  "shrink-0 font-bold gap-2 px-8",
-                  panicActive
-                    ? "bg-green-600 hover:bg-green-700 text-white"
-                    : "bg-red-600 hover:bg-red-700 text-white"
+              
+              <div className="flex gap-2 shrink-0">
+                {!isCurrentlyAuto && (
+                  <button
+                    onClick={() => updateManualStatus(null)}
+                    className={cn(buttonVariants({ variant: "outline" }), "font-bold")}
+                  >
+                    🔄 Volver a Horario Auto
+                  </button>
                 )}
-              >
-                {panicActive ? (
-                  <><DoorOpen className="w-5 h-5" /> Reabrir local</>
+                
+                {isOpen ? (
+                  <button
+                    onClick={() => updateManualStatus("closed")}
+                    className={cn(buttonVariants({ variant: "destructive" }), "font-bold gap-2 px-6")}
+                  >
+                    <DoorClosed className="w-5 h-5" /> Cerrar ahora
+                  </button>
                 ) : (
-                  <><DoorClosed className="w-5 h-5" /> Cerrar temporalmente</>
+                  <button
+                    onClick={() => updateManualStatus("open")}
+                    className={cn(buttonVariants({ variant: "default" }), "bg-green-600 hover:bg-green-700 text-white font-bold gap-2 px-6")}
+                  >
+                    <DoorOpen className="w-5 h-5" /> Abrir ahora
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
-            {panicActive && (
-              <div className="px-5 pb-4 text-xs text-red-400/80 border-t border-red-800/30 pt-3">
-                ⚠️ Has cerrado el local manualmente. Los clientes no pueden pedir aunque estés en horario comercial.
+            {!isCurrentlyAuto && (
+              <div className={cn(
+                "px-5 pb-4 text-xs border-t pt-3",
+                manualStatus === "closed" ? "text-red-400/80 border-red-800/30" : "text-green-400/80 border-green-800/30"
+              )}>
+                ⚠️ Has forzado el estado a <strong>{manualStatus === "closed" ? "CERRADO" : "ABIERTO"}</strong>. El horario automático está ignorado hasta que restablezcas.
               </div>
             )}
-            {!panicActive && !isOpen && (
+            {isCurrentlyAuto && !isOpen && (
               <div className="px-5 pb-4 text-xs text-amber-400/80 border-t border-amber-800/20 pt-3">
-                ℹ️ El local está cerrado por horario. El botón "Cerrar temporalmente" sirve para evitar que se abra automáticamente al llegar la hora de apertura.
+                ℹ️ El local está cerrado por horario. Pulsa "Abrir ahora" si quieres atender pedidos fuera de hora.
               </div>
             )}
           </div>

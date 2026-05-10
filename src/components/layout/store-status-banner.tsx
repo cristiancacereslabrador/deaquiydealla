@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
  * Detecta automáticamente la hora de Granada (Europe/Madrid) y el botón de pánico.
  */
 export function StoreStatusBanner() {
-  const [panicActive, setPanicActive] = useState(false);
+  const [manualOverride, setManualOverride] = useState<"open" | "closed" | null>(null);
   const [scheduleData, setScheduleData] = useState<DaySchedule[]>(DEFAULT_DAILY_SCHEDULE);
   const [mounted, setMounted] = useState(false);
   // Refrescar cada minuto para que el banner cambie automáticamente al abrir/cerrar
@@ -22,15 +22,15 @@ export function StoreStatusBanner() {
     startTransition(() => setMounted(true));
     const supabase = createBrowserSupabaseClient();
 
-    // Carga inicial del estado de pánico y horario
+    // Carga inicial del estado manual y horario
     supabase
       .from("store_settings")
       .select("id, value")
-      .in("id", ["panic_button", "weekly_schedule"])
+      .in("id", ["store_status", "weekly_schedule"])
       .then(({ data }) => {
         if (data) {
-          const panic = data.find(d => d.id === "panic_button");
-          if (panic?.value?.active) setPanicActive(true);
+          const status = data.find(d => d.id === "store_status");
+          if (status?.value?.manual_override) setManualOverride(status.value.manual_override);
 
           const schedule = data.find(d => d.id === "weekly_schedule");
           if (schedule?.value?.schedule) setScheduleData(schedule.value.schedule);
@@ -44,8 +44,8 @@ export function StoreStatusBanner() {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "store_settings" },
         (payload) => {
-          if (payload.new.id === "panic_button") {
-            setPanicActive(payload.new.value.active);
+          if (payload.new.id === "store_status") {
+            setManualOverride(payload.new.value.manual_override);
           }
           if (payload.new.id === "weekly_schedule") {
             setScheduleData(payload.new.value.schedule);
@@ -65,7 +65,7 @@ export function StoreStatusBanner() {
 
   if (!mounted) return null;
 
-  const { isOpen, reason, nextOpening } = getStoreStatus(panicActive, scheduleData);
+  const { isOpen, reason, nextOpening } = getStoreStatus(manualOverride, scheduleData);
 
   if (isOpen) return null;
 

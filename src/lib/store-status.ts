@@ -83,19 +83,26 @@ function getNextOpeningText(fromDay: number, scheduleData: DaySchedule[]): strin
 }
 
 /**
- * @description Verifica si el local está abierto basándose en el horario real de Granada y el estado de pánico.
- * @param {boolean} panicActive - Si el cierre temporal manual está activado.
+ * @description Verifica si el local está abierto basándose en el horario real de Granada y el estado manual.
+ * @param {string | null} manualOverride - 'open', 'closed' o null (automático).
  * @param {DaySchedule[]} scheduleData - Horario semanal dinámico.
  * @returns {StoreStatus} Estado detallado del local.
  */
 export function getStoreStatus(
-  panicActive: boolean,
+  manualOverride: "open" | "closed" | null = null,
   scheduleData: DaySchedule[] = DEFAULT_DAILY_SCHEDULE
 ): StoreStatus {
-  if (panicActive) {
+  // 1. Forzado manual cerrado
+  if (manualOverride === "closed") {
     return { isOpen: false, reason: "panic" };
   }
 
+  // 2. Forzado manual abierto
+  if (manualOverride === "open") {
+    return { isOpen: true, reason: null };
+  }
+
+  // 3. Automático (Seguir horario)
   const { dayNumber, totalMinutes } = getNowInGranada();
   const todaySchedule = scheduleData[dayNumber];
 

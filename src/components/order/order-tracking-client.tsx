@@ -125,35 +125,56 @@ export function OrderTrackingClient({ orderId }: OrderTrackingClientProps) {
         </div>
 
         {/* Status Message */}
-        <div className="mt-12 text-center space-y-3 bg-background/50 p-6 rounded-2xl border">
+        <div className="mt-12 text-center space-y-4 bg-background/60 p-8 rounded-3xl border border-white/10 backdrop-blur-sm shadow-inner">
           {step === 1 && (
             <>
-              <h3 className="text-xl font-bold">Hemos recibido tu pedido, {customer_name.split(' ')[0]}</h3>
-              <p className="text-muted-foreground">Estamos esperando que el Chef Hugo lo revise para empezar a cocinar.</p>
+              <h3 className="text-2xl font-bold font-heading">Hemos recibido tu pedido</h3>
+              <p className="text-muted-foreground">Hola {customer_name.split(' ')[0]}, el Chef Hugo ya tiene tu orden en su pantalla y la revisará en un momento.</p>
+              <div className="flex items-center justify-center gap-2 text-primary font-bold animate-pulse">
+                <Clock className="w-4 h-4" />
+                <span>Pendiente de confirmación</span>
+              </div>
             </>
           )}
           {step === 2 && (
             <>
-              <h3 className="text-xl font-bold text-orange-600 dark:text-orange-400">¡Tu comida está en los fogones!</h3>
-              <p className="text-muted-foreground">Los woks están a tope. Estará listo en unos 15-20 minutos.</p>
+              <h3 className="text-2xl font-bold font-heading text-orange-600 dark:text-orange-400">¡Tu comida está en marcha!</h3>
+              <p className="text-muted-foreground">Los woks están encendidos y el Chef Hugo está preparando tus platos con ingredientes frescos.</p>
+              
+              {order.estimated_minutes ? (
+                <div className="mt-4 inline-flex flex-col items-center p-4 bg-orange-500/10 rounded-2xl border border-orange-500/20">
+                  <span className="text-xs uppercase tracking-widest font-bold text-orange-500/70">Tiempo estimado</span>
+                  <span className="text-4xl font-black text-orange-500">{order.estimated_minutes} min</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2 text-orange-500 font-bold">
+                  <ChefHat className="w-4 h-4" />
+                  <span>En preparación</span>
+                </div>
+              )}
             </>
           )}
           {step === 3 && (
             <>
-              <h3 className="text-xl font-bold text-green-600 dark:text-green-400">¡Tu pedido está listo para recoger! 🎉</h3>
-              <p className="text-muted-foreground">Puedes pasar a recogerlo por nuestro local. ¡Que lo disfrutes!</p>
-              <div className="pt-4 flex flex-col items-center gap-3">
+              <div className="mx-auto w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-green-500/40">
+                <PackageCheck className="w-10 h-10 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold font-heading text-green-600 dark:text-green-400">¡Todo listo para recoger! 🎉</h3>
+              <p className="text-muted-foreground text-lg">Tu pedido está caliente y empaquetado esperándote en nuestro local.</p>
+              
+              <div className="pt-6 flex flex-col items-center gap-4">
                 <a 
                   href="https://maps.app.goo.gl/EJBP3AiC65QQcpUV7" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className={cn(buttonVariants({ variant: "default" }), "rounded-full gap-2")}
+                  className={cn(buttonVariants({ variant: "default" }), "rounded-full gap-2 px-8 h-12 text-base shadow-lg shadow-primary/30")}
                 >
-                  <MapPin className="w-4 h-4" /> Ver dirección en Google Maps
+                  <MapPin className="w-5 h-5" /> Ver en Google Maps
                 </a>
-                <Link href="/contact" className="text-xs text-muted-foreground underline">
-                  Ver más información del local
-                </Link>
+                <div className="text-xs space-y-1">
+                  <p className="text-muted-foreground font-bold">📍 Dirección:</p>
+                  <p className="text-muted-foreground">C. de Elvira, 53, Centro, 18010 Granada</p>
+                </div>
               </div>
             </>
           )}
