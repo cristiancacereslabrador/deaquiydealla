@@ -22,7 +22,7 @@ export function CartView({ allDishes }: { allDishes: any[] }) {
   const t = useTranslations("CartPage");
   const locale = useLocale();
   const [mounted, setMounted] = useState(false);
-  const [panicActive, setPanicActive] = useState(false);
+  const [manualOverride, setManualOverride] = useState<"open" | "closed" | null>(null);
   const [scheduleData, setScheduleData] = useState<DaySchedule[]>(DEFAULT_DAILY_SCHEDULE);
   const [outOfStockIds, setOutOfStockIds] = useState<Set<string>>(new Set());
 
@@ -31,11 +31,11 @@ export function CartView({ allDishes }: { allDishes: any[] }) {
     
     const supabase = createBrowserSupabaseClient();
 
-    // 1. Settings (Panic + Schedule) validation
-    supabase.from("store_settings").select("id, value").in("id", ["panic_button", "weekly_schedule"]).then(({ data }) => {
+    // 1. Settings (Manual Status + Schedule) validation
+    supabase.from("store_settings").select("id, value").in("id", ["store_status", "weekly_schedule"]).then(({ data }) => {
       if (data) {
-        const panic = data.find(d => d.id === "panic_button");
-        if (panic?.value?.active) setPanicActive(true);
+        const status = data.find(d => d.id === "store_status");
+        if (status?.value?.manual_override) setManualOverride(status.value.manual_override);
 
         const schedule = data.find(d => d.id === "weekly_schedule");
         if (schedule?.value?.schedule) setScheduleData(schedule.value.schedule);
@@ -44,7 +44,7 @@ export function CartView({ allDishes }: { allDishes: any[] }) {
     
     const settingsChannel = supabase.channel("cart_store_settings")
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "store_settings" }, (payload) => {
-        if (payload.new.id === "panic_button") setPanicActive(payload.new.value.active);
+        if (payload.new.id === "store_status") setManualOverride(payload.new.value.manual_override);
         if (payload.new.id === "weekly_schedule") setScheduleData(payload.new.value.schedule);
       }).subscribe();
 
@@ -119,7 +119,7 @@ export function CartView({ allDishes }: { allDishes: any[] }) {
     );
   }
 
-  const { isOpen, nextOpening, reason } = getStoreStatus(panicActive, scheduleData);
+  const { isOpen, nextOpening, reason } = getStoreStatus(manualOverride, scheduleData);
 
   if (items.length === 0) {
     return (

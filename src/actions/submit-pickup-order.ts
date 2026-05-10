@@ -64,18 +64,18 @@ export async function submitPickupOrderAction(
   }
 
   try {
-    // ─── 1. Verificar botón de pánico y horario ───────────────────────────────────────────
+    // ─── 1. Verificar estado manual y horario ───────────────────────────────────────────
     const { data: settingsData } = await supabase
       .from("store_settings")
       .select("id, value")
-      .in("id", ["panic_button", "weekly_schedule"]);
+      .in("id", ["store_status", "weekly_schedule"]);
 
-    const panicData = settingsData?.find((s: any) => s.id === "panic_button");
+    const statusData = settingsData?.find((s: any) => s.id === "store_status");
     const scheduleData = settingsData?.find((s: any) => s.id === "weekly_schedule");
 
     const { getStoreStatus, DEFAULT_DAILY_SCHEDULE } = await import("@/lib/store-status");
     const { isOpen, reason, nextOpening } = getStoreStatus(
-      panicData?.value?.active ?? false,
+      statusData?.value?.manual_override ?? null,
       scheduleData?.value?.schedule ?? DEFAULT_DAILY_SCHEDULE
     );
 
