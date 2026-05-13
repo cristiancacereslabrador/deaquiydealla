@@ -197,6 +197,7 @@ export function MenuCatalog({ dishes, initialCategory }: { dishes: readonly Dish
           ))}
         </ul>
       )}
+      </div>
     </div>
   );
 }
