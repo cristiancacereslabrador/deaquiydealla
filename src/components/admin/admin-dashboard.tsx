@@ -696,15 +696,19 @@ export function AdminDashboard() {
             </div>
             <div>
               <h3 className="font-bold text-lg leading-tight">Impresora Epson</h3>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2 mt-0.5">
                 <span className={cn(
-                  "w-2 h-2 rounded-full",
+                  "w-3 h-3 rounded-full border border-black/10 shadow-sm",
                   printerStatus === "online" ? "bg-green-500 animate-pulse" : 
                   printerStatus === "offline" ? "bg-red-500" : "bg-muted"
                 )} />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <span className={cn(
+                  "text-xs font-bold uppercase tracking-wider",
+                  printerStatus === "online" ? "text-green-600 dark:text-green-400" : 
+                  printerStatus === "offline" ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
+                )}>
                   {printerStatus === "online" ? "Conectada" : 
-                   printerStatus === "offline" ? "Sin conexión (Reintento cada 2m)" : 
+                   printerStatus === "offline" ? "Desconectada" : 
                    printerStatus === "checking" ? "Verificando..." : "Inactiva"}
                 </span>
               </div>
@@ -782,11 +786,6 @@ export function AdminDashboard() {
                 Probar
               </button>
             </div>
-            
-            <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
-              <Zap className="w-3 h-3 text-amber-500" />
-              La impresión directa envía el ticket automáticamente a la red local sin abrir cuadros de diálogo.
-            </p>
           </div>
         )}
         
