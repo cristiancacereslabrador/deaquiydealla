@@ -93,7 +93,8 @@ function buildAcceptedMessage(order: Order, minutes?: number): string {
 }
 
 function buildReadyMessage(order: Order): string {
-  return `✅ *¡Tu pedido está listo, ${order.customer_name}!*\n\n📦 *Pedido #${order.id.slice(0, 8)}* listo para recoger.\n\n📍 *Ubicación:* ${BRAND_INFO.address}\n🗺️ *Ver en Google Maps:* https://maps.app.goo.gl/EJBP3AiC65QQcpUV7\n\n💵 *Pago:* Efectivo o Tarjeta en local\n\n¡Te esperamos! ✨`;
+  const reviewLink = "https://g.page/r/YOUR_GOOGLE_REVIEW_LINK/review"; // TODO: Reemplazar con el link real de Google
+  return `✅ *¡Tu pedido está listo, ${order.customer_name}!*\n\n📦 *Pedido #${order.id.slice(0, 8)}* listo para recoger.\n\n📍 *Ubicación:* ${BRAND_INFO.address}\n🗺️ *Ver en Google Maps:* https://maps.app.goo.gl/EJBP3AiC65QQcpUV7\n\n💵 *Pago:* Efectivo o Tarjeta en local\n\n¡Te esperamos! ✨\n\n---\n💬 *¿Te gustó la comida?* Nos ayudarías mucho dejando una reseña aquí: ${reviewLink}`;
 }
 
 function waUrl(phone: string, message: string): string {
@@ -364,6 +365,7 @@ export function AdminDashboard() {
   const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
   const [printerIp, setPrinterIp] = useState("192.168.1.136");
   const [isDirectPrintEnabled, setIsDirectPrintEnabled] = useState(true);
+  const [isAutoPrintEnabled, setIsAutoPrintEnabled] = useState(false);
   const [isPrinterEditing, setIsPrinterEditing] = useState(false);
   const [printerStatus, setPrinterStatus] = useState<"idle" | "checking" | "online" | "offline">("idle");
   const [isAudioBlocked, setIsAudioBlocked] = useState(false);
@@ -422,9 +424,21 @@ export function AdminDashboard() {
     }
   }, [isDirectPrintEnabled, printerIp, checkPrinterConnection]);
 
-  const savePrinterConfig = (ip: string, enabled: boolean) => {
+  useEffect(() => {
+    const savedIp = localStorage.getItem("admin_printer_ip");
+    const savedAuto = localStorage.getItem("admin_auto_print") === "true";
+    if (savedIp) setPrinterIp(savedIp);
+    setIsDirectPrintEnabled(true); 
+    setIsAutoPrintEnabled(savedAuto);
+  }, []);
+
+  const savePrinterConfig = (ip: string, enabled: boolean, auto?: boolean) => {
     setPrinterIp(ip);
     setIsDirectPrintEnabled(enabled);
+    if (auto !== undefined) {
+      setIsAutoPrintEnabled(auto);
+      localStorage.setItem("admin_auto_print", String(auto));
+    }
     localStorage.setItem("admin_printer_ip", ip);
     setIsPrinterEditing(false);
   };
@@ -490,10 +504,18 @@ export function AdminDashboard() {
     /* ── Realtime subscriptions ── */
     const channel = supabase.channel("admin_kanban")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "pedidos" }, (payload) => {
-        setOrders(prev => [...prev, payload.new as Order]);
+        const newOrder = payload.new as Order;
+        setOrders(prev => [...prev, newOrder]);
         
         // Reproducir sonido
         playNotificationSound();
+
+        // Impresión Automática si está activa
+        if (isAutoPrintEnabled && printerIp) {
+          sendToEpsonDirect(newOrder, printerIp).catch(err => {
+            console.error("Auto-print failed:", err);
+          });
+        }
         
         if ("Notification" in window && Notification.permission === "granted") {
           const newOrder = payload.new as Order;
@@ -714,20 +736,39 @@ export function AdminDashboard() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Interruptor:</span>
-            <button
-              onClick={() => setIsDirectPrintEnabled(!isDirectPrintEnabled)}
-              className={cn(
-                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                isDirectPrintEnabled ? "bg-blue-600" : "bg-muted"
-              )}
-            >
-              <span className={cn(
-                "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                isDirectPrintEnabled ? "translate-x-5" : "translate-x-0"
-              )} />
-            </button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Interruptor:</span>
+              <button
+                onClick={() => setIsDirectPrintEnabled(!isDirectPrintEnabled)}
+                className={cn(
+                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                  isDirectPrintEnabled ? "bg-blue-600" : "bg-muted"
+                )}
+              >
+                <span className={cn(
+                  "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                  isDirectPrintEnabled ? "translate-x-5" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 border-l pl-4">
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Auto-Imprimir:</span>
+              <button
+                onClick={() => savePrinterConfig(printerIp, isDirectPrintEnabled, !isAutoPrintEnabled)}
+                className={cn(
+                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                  isAutoPrintEnabled ? "bg-amber-500" : "bg-muted"
+                )}
+                title="Imprime automáticamente al recibir un nuevo pedido"
+              >
+                <span className={cn(
+                  "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                  isAutoPrintEnabled ? "translate-x-5" : "translate-x-0"
+                )} />
+              </button>
+            </div>
           </div>
         </div>
         
@@ -908,6 +949,71 @@ export function AdminDashboard() {
           </div>
         );
       })()}
+
+      {/* ── Estadísticas de Venta ── */}
+      <section className="bg-card border rounded-2xl overflow-hidden shadow-sm">
+        <div className="px-5 py-4 border-b bg-muted/30 flex items-center justify-between">
+          <div className="flex items-center gap-2 font-bold">
+            <Zap className="w-5 h-5 text-amber-500" /> 
+            Estadísticas y Análisis de Venta
+          </div>
+        </div>
+        <div className="p-6 grid gap-6 md:grid-cols-2">
+          {/* Top Dishes */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Platos más Vendidos</h4>
+            <div className="space-y-2">
+              {(() => {
+                const counts: Record<string, { name: string, qty: number }> = {};
+                orders.forEach(o => o.lines.forEach(l => {
+                  if (!counts[l.dishId]) counts[l.dishId] = { name: l.nameEs || l.nameEn, qty: 0 };
+                  counts[l.dishId].qty += l.quantity;
+                }));
+                return Object.values(counts)
+                  .sort((a, b) => b.qty - a.qty)
+                  .slice(0, 5)
+                  .map((item, i) => (
+                    <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-muted/20 border">
+                      <span className="text-sm font-medium">{item.name}</span>
+                      <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">{item.qty} uds</span>
+                    </div>
+                  ));
+              })()}
+            </div>
+          </div>
+
+          {/* Hourly Distribution */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Distribución por Hora</h4>
+            <div className="flex items-end gap-1 h-32 pt-4">
+              {(() => {
+                const hours = new Array(24).fill(0);
+                orders.forEach(o => {
+                  const hour = new Date(o.created_at).getHours();
+                  hours[hour]++;
+                });
+                const max = Math.max(...hours) || 1;
+                return hours.map((count, h) => (
+                  <div 
+                    key={h} 
+                    className="flex-1 bg-primary/20 hover:bg-primary/40 rounded-t-sm transition-colors relative group"
+                    style={{ height: `${(count / max) * 100}%` }}
+                  >
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-popover border text-[10px] px-1.5 py-0.5 rounded shadow-sm z-10">
+                      {h}h: {count}
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground px-1">
+              <span>00:00</span>
+              <span>12:00</span>
+              <span>23:59</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* ── Kanban columns ── */}
       <div className="grid md:grid-cols-3 gap-4">

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useTranslations, useLocale } from "next-intl";
 import { useMemo, useState, useEffect } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { LoyaltyCard } from "@/components/ui/loyalty-card";
 
 interface DBCategory {
   id: string;
@@ -155,7 +156,10 @@ export function MenuCatalog({ dishes, initialCategory }: { dishes: readonly Dish
   }, [liveDishes, active]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
+      <LoyaltyCard />
+      
+      <div className="space-y-4">
       <div className="sticky top-14 sm:top-16 z-40 bg-background/95 backdrop-blur border-b shadow-sm sm:border-none sm:shadow-none -mx-4 sm:mx-0">
         <div
           className="flex gap-2 overflow-x-auto py-3 px-4 sm:px-0 scrollbar-none"
