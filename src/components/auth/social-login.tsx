@@ -3,7 +3,6 @@
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { Chrome } from "lucide-react";
 
 /**
  * @description Botón de inicio de sesión con Google (OAuth).
