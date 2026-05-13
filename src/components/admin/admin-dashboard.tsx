@@ -738,7 +738,7 @@ export function AdminDashboard() {
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Interruptor:</span>
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Activar Impresión:</span>
               <button
                 onClick={() => setIsDirectPrintEnabled(!isDirectPrintEnabled)}
                 className={cn(
