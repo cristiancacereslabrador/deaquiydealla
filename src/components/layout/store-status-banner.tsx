@@ -97,17 +97,37 @@ export function StoreStatusBanner() {
   return (
     <div
       className={cn(
-        "w-full overflow-hidden",
+        "w-full overflow-hidden h-9 flex items-center relative",
         bgColor,
         textColor
       )}
       role="alert"
       aria-live="polite"
     >
-      {/* Ticker-style: scrolls horizontally on mobile, centered on desktop */}
-      <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto whitespace-nowrap scrollbar-none sm:justify-center sm:overflow-visible sm:whitespace-normal sm:flex-wrap">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes marquee {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+        .animate-marquee-slow {
+          animation: marquee 20s linear infinite;
+        }
+        @media (min-width: 640px) {
+          .animate-marquee-slow {
+            animation: none;
+            transform: none;
+            width: 100%;
+            justify-content: center;
+          }
+        }
+      `}} />
+      
+      <div className="flex items-center gap-2 px-4 w-full animate-marquee-slow sm:animate-none sm:justify-center whitespace-nowrap">
         {icon}
-        <span className="text-xs font-bold tracking-wide">{message}</span>
+        <span className="text-xs font-bold tracking-wide uppercase">
+          {message}
+        </span>
+        {/* Duplicate for seamless loop on mobile if needed, but simple marquee usually works */}
       </div>
     </div>
   );
