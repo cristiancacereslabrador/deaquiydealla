@@ -104,53 +104,74 @@ function waUrl(phone: string, message: string): string {
 }
 
 /**
+ * @description Escapa caracteres especiales para XML.
+ */
+function escapeXml(unsafe: string): string {
+  return unsafe.replace(/[<>&'"]/g, (c) => {
+    switch (c) {
+      case "<": return "&lt;";
+      case ">": return "&gt;";
+      case "&": return "&amp;";
+      case "'": return "&apos;";
+      case "\"": return "&quot;";
+      default: return c;
+    }
+  });
+}
+
+/**
  * @description Envía un pedido directamente a una impresora Epson TM mediante ePOS-Print XML.
  * @param order - El pedido a imprimir.
  * @param ip - La dirección IP de la impresora.
  */
 async function sendToEpsonDirect(order: Order, ip: string) {
-  const url = `http://${ip}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
+  if (!ip) throw new Error("No IP provided");
+  const url = `http://${ip}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=5000`;
   
-  // Construcción manual del XML de ePOS-Print
+  // XML con escapes correctos y saltos de línea reales para evitar caracteres extraños
   let xml = `<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
   <s:Body>
     <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-      <text font="font_a" width="2" height="2" align="center">${BRAND_INFO.name.toUpperCase()}\\n</text>
-      <text align="center">Pedido: #${order.id.slice(0, 8)}\\n</text>
-      <feed unit="10"/>
-      <text align="left">Cliente: ${order.customer_name}\\n</text>
-      <text align="left">Tlf: ${order.customer_phone}\\n</text>
-      <text align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}\\n</text>
-      <text>------------------------------------------\\n</text>
+      <text font="font_a" width="2" height="2" align="center">${escapeXml(BRAND_INFO.name.toUpperCase())}\n</text>
+      <text align="center">Pedido: #${order.id.slice(0, 8)}\n</text>
+      <feed unit="8"/>
+      <text align="left">Cliente: ${escapeXml(order.customer_name)}\n</text>
+      <text align="left">Tlf: ${order.customer_phone}\n</text>
+      <text align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}\n</text>
+      <text>------------------------------------------\n</text>
   `;
 
   order.lines.forEach(l => {
     const name = l.nameEs || l.nameEn || l.dishId;
-    xml += `<text font="font_a" width="1" height="1">${l.quantity}x ${name}\\n</text>`;
+    xml += `<text font="font_a" width="1" height="1">${l.quantity}x ${escapeXml(name)}\n</text>`;
   });
 
   xml += `
-      <text>------------------------------------------\\n</text>
-      <text font="font_a" width="2" height="2" align="right">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}\\n</text>
-      <feed unit="30"/>
-      <text align="center">¡DE AQUI Y DE ALLA!\\n</text>
+      <text>------------------------------------------\n</text>
+      <text font="font_a" width="1" height="1" align="right">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}\n</text>
+      <feed unit="12"/>
+      <text align="center">¡DE AQUI Y DE ALLA!\n</text>
       <cut type="feed"/>
     </epos-print>
   </s:Body>
 </s:Envelope>`;
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "text/xml; charset=utf-8",
-      "If-Modified-Since": "Thu, 01 Jan 1970 00:00:00 GMT"
-    },
-    body: xml
-  });
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/xml; charset=utf-8",
+      },
+      body: xml
+    });
 
-  if (!response.ok) throw new Error("Printer connection failed");
-  return response.text();
+    if (!response.ok) throw new Error("Status " + response.status);
+    return response.text();
+  } catch (error) {
+    LoggerService.error("sendToEpsonDirect", error, { ip, orderId: order.id });
+    throw error;
+  }
 }
 
 /* ─── Order Card ─────────────────────────────────────────────────────── */
@@ -168,6 +189,7 @@ function OrderCard({
   isDirectPrintEnabled: boolean;
   onPrintManual: (order: Order) => void;
 }) {
+  const [isPrinting, setIsPrinting] = useState(false);
   const col = COLUMN_CONFIG[order.status as Column];
   // eslint-disable-next-line react-hooks/purity
   const elapsed = Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60000);
@@ -247,13 +269,17 @@ function OrderCard({
 
           {/* Imprimir Ticket */}
           <button
+            disabled={isPrinting}
             onClick={async () => {
               if (isDirectPrintEnabled && printerIp) {
+                setIsPrinting(true);
                 try {
                   await sendToEpsonDirect(order, printerIp);
                 } catch (err) {
-                  alert("Error en impresión directa. Revisa la IP o usa el modo normal.");
+                  alert("Error en impresión directa. Revisa la IP o usa el modo manual.");
                   onPrintManual(order);
+                } finally {
+                  setIsPrinting(false);
                 }
               } else {
                 onPrintManual(order);
@@ -262,11 +288,12 @@ function OrderCard({
             className={cn(
               buttonVariants({ size: "sm", variant: isDirectPrintEnabled ? "default" : "outline" }),
               "px-3 shrink-0",
-              isDirectPrintEnabled && "bg-blue-600 hover:bg-blue-700"
+              isDirectPrintEnabled && "bg-blue-600 hover:bg-blue-700",
+              isPrinting && "opacity-70 animate-pulse"
             )}
             title={isDirectPrintEnabled ? "Impresión Directa Activa" : "Imprimir ticket"}
           >
-            <Printer className="w-4 h-4" />
+            <Printer className={cn("w-4 h-4", isPrinting && "animate-spin")} />
           </button>
         </div>
 
@@ -335,22 +362,71 @@ export function AdminDashboard() {
   const [weeklySchedule, setWeeklySchedule] = useState<DaySchedule[]>(DEFAULT_DAILY_SCHEDULE);
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
   const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
-  const [printerIp, setPrinterIp] = useState("");
-  const [isDirectPrintEnabled, setIsDirectPrintEnabled] = useState(false);
+  const [printerIp, setPrinterIp] = useState("192.168.1.136");
+  const [isDirectPrintEnabled, setIsDirectPrintEnabled] = useState(true);
+  const [isPrinterEditing, setIsPrinterEditing] = useState(false);
+  const [printerStatus, setPrinterStatus] = useState<"idle" | "checking" | "online" | "offline">("idle");
+  const [isAudioBlocked, setIsAudioBlocked] = useState(false);
 
-  // Cargar configuración de impresora desde localStorage
+  // Función para reproducir sonido con reintento si está bloqueado
+  const playNotificationSound = useCallback(async () => {
+    try {
+      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+      await audio.play();
+      setIsAudioBlocked(false);
+    } catch (err) {
+      console.warn("Audio blocked by browser. Interaction required.");
+      setIsAudioBlocked(true);
+    }
+  }, []);
+
+  // Cargar configuración de impresora y gestionar auto-conexión
   useEffect(() => {
     const savedIp = localStorage.getItem("admin_printer_ip");
-    const savedEnabled = localStorage.getItem("admin_direct_print_enabled") === "true";
+    // Al abrir la app, siempre se activa (según requerimiento del usuario)
+    // a menos que explícitamente se guardara como apagado en el pasado? 
+    // "El interruptor de encendido de impresion se debe activar solo cuando se abra la app"
     if (savedIp) setPrinterIp(savedIp);
-    setIsDirectPrintEnabled(savedEnabled);
+    setIsDirectPrintEnabled(true); 
   }, []);
+
+  // Verificar conexión con la impresora
+  const checkPrinterConnection = useCallback(async (ip: string) => {
+    if (!ip || !isDirectPrintEnabled) return;
+    setPrinterStatus("checking");
+    try {
+      // Un test ligero: pedir estado o enviar un XML vacío
+      const testOrder = { id: "PING", customer_name: "", customer_phone: "", created_at: new Date().toISOString(), total_cents: 0, lines: [] } as any;
+      await sendToEpsonDirect(testOrder, ip);
+      setPrinterStatus("online");
+    } catch (err) {
+      setPrinterStatus("offline");
+    }
+  }, [isDirectPrintEnabled]);
+
+  // Efecto de reconexión cada 2 minutos si falla
+  useEffect(() => {
+    if (!isDirectPrintEnabled || printerStatus === "online") return;
+
+    const interval = setInterval(() => {
+      checkPrinterConnection(printerIp);
+    }, 120000); // 2 minutos
+
+    return () => clearInterval(interval);
+  }, [isDirectPrintEnabled, printerStatus, printerIp, checkPrinterConnection]);
+
+  // Verificar al cambiar IP o activar
+  useEffect(() => {
+    if (isDirectPrintEnabled && printerIp) {
+      checkPrinterConnection(printerIp);
+    }
+  }, [isDirectPrintEnabled, printerIp, checkPrinterConnection]);
 
   const savePrinterConfig = (ip: string, enabled: boolean) => {
     setPrinterIp(ip);
     setIsDirectPrintEnabled(enabled);
     localStorage.setItem("admin_printer_ip", ip);
-    localStorage.setItem("admin_direct_print_enabled", String(enabled));
+    setIsPrinterEditing(false);
   };
 
   // Request notification permissions
@@ -415,8 +491,9 @@ export function AdminDashboard() {
     const channel = supabase.channel("admin_kanban")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "pedidos" }, (payload) => {
         setOrders(prev => [...prev, payload.new as Order]);
-        const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
-        audio.play().catch(() => {});
+        
+        // Reproducir sonido
+        playNotificationSound();
         
         if ("Notification" in window && Notification.permission === "granted") {
           const newOrder = payload.new as Order;
@@ -529,6 +606,25 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* ── Alerta de Sonido Bloqueado ── */}
+      {isAudioBlocked && (
+        <div className="bg-amber-500 text-white px-4 py-2 rounded-xl flex items-center justify-between shadow-lg animate-bounce mt-2">
+          <div className="flex items-center gap-2">
+            <Volume2 className="w-5 h-5" />
+            <p className="text-sm font-bold">El navegador ha bloqueado el sonido. Haz clic en "Probar Sonido" para activarlo.</p>
+          </div>
+          <button 
+            onClick={() => {
+              playNotificationSound();
+              setIsAudioBlocked(false);
+            }}
+            className="bg-white text-amber-600 px-3 py-1 rounded-lg text-xs font-bold shadow-sm"
+          >
+            Activar ahora
+          </button>
+        </div>
+      )}
+
       {/* ── Hidden Printable Ticket (CSS handles visibility) ── */}
       {orderToPrint && (
         <div id="printable-ticket" className="hidden print:block fixed inset-0 z-[999] bg-white text-black p-0 font-mono text-[13px] w-[80mm]">
@@ -588,19 +684,38 @@ export function AdminDashboard() {
         </div>
       )}
 
-      {/* ── Configuración de Impresora ── */}
       <div className="bg-card border rounded-2xl p-5 space-y-4 shadow-sm">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Printer className="w-5 h-5 text-primary" />
-            <h3 className="font-bold text-lg">Impresora Epson (WiFi)</h3>
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+              printerStatus === "online" ? "bg-green-100 text-green-600 dark:bg-green-950/40" : 
+              printerStatus === "offline" ? "bg-red-100 text-red-600 dark:bg-red-950/40" : "bg-muted text-muted-foreground"
+            )}>
+              <Printer className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg leading-tight">Impresora Epson</h3>
+              <div className="flex items-center gap-1.5">
+                <span className={cn(
+                  "w-2 h-2 rounded-full",
+                  printerStatus === "online" ? "bg-green-500 animate-pulse" : 
+                  printerStatus === "offline" ? "bg-red-500" : "bg-muted"
+                )} />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {printerStatus === "online" ? "Conectada" : 
+                   printerStatus === "offline" ? "Sin conexión (Reintento cada 2m)" : 
+                   printerStatus === "checking" ? "Verificando..." : "Inactiva"}
+                </span>
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Impresión Directa:</span>
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Interruptor:</span>
             <button
-              onClick={() => savePrinterConfig(printerIp, !isDirectPrintEnabled)}
+              onClick={() => setIsDirectPrintEnabled(!isDirectPrintEnabled)}
               className={cn(
-                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ring-offset-background",
+                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
                 isDirectPrintEnabled ? "bg-blue-600" : "bg-muted"
               )}
             >
@@ -613,31 +728,71 @@ export function AdminDashboard() {
         </div>
         
         {isDirectPrintEnabled && (
-          <div className="flex gap-3 items-end">
-            <div className="flex-1 space-y-1">
-              <label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Dirección IP de la Impresora</label>
-              <input 
-                type="text" 
-                placeholder="Ej: 192.168.1.45"
-                value={printerIp}
-                onChange={(e) => savePrinterConfig(e.target.value, isDirectPrintEnabled)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
+          <div className="space-y-3 pt-2 border-t border-border/50">
+            <div className="flex gap-3 items-end">
+              <div className="flex-1 space-y-1">
+                <label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Dirección IP de la Impresora</label>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    placeholder="Ej: 192.168.1.136"
+                    value={printerIp}
+                    disabled={!isPrinterEditing}
+                    onChange={(e) => setPrinterIp(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-70 disabled:bg-muted/30"
+                  />
+                  {isPrinterEditing && (
+                    <div className="absolute right-2 top-1.5 flex gap-1">
+                      <button 
+                        onClick={() => {
+                          const saved = localStorage.getItem("admin_printer_ip");
+                          if (saved) setPrinterIp(saved);
+                          setIsPrinterEditing(false);
+                        }}
+                        className="text-[10px] font-bold bg-muted px-2 py-1 rounded hover:bg-muted/80"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {!isPrinterEditing ? (
+                <button 
+                  onClick={() => setIsPrinterEditing(true)}
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "font-bold h-10")}
+                >
+                  Editar IP
+                </button>
+              ) : (
+                <button 
+                  onClick={() => savePrinterConfig(printerIp, isDirectPrintEnabled)}
+                  className={cn(buttonVariants({ variant: "default", size: "sm" }), "font-bold h-10 bg-green-600 hover:bg-green-700")}
+                >
+                  Guardar IP
+                </button>
+              )}
+              
+              <button 
+                onClick={() => checkPrinterConnection(printerIp)}
+                disabled={printerStatus === "checking"}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "font-bold h-10")}
+              >
+                Probar
+              </button>
             </div>
-            <button 
-              onClick={() => {
-                const testOrder = { id: "TEST", customer_name: "PRUEBA", customer_phone: "000", created_at: new Date().toISOString(), total_cents: 0, lines: [] } as any;
-                sendToEpsonDirect(testOrder, printerIp).catch(() => alert("Error de conexión con la impresora."));
-              }}
-              className={cn(buttonVariants({ variant: "outline" }), "font-bold")}
-            >
-              Probar Conexión
-            </button>
+            
+            <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
+              <Zap className="w-3 h-3 text-amber-500" />
+              La impresión directa envía el ticket automáticamente a la red local sin abrir cuadros de diálogo.
+            </p>
           </div>
         )}
+        
         {!isDirectPrintEnabled && (
-          <p className="text-xs text-muted-foreground italic">
-            Usa el botón de la impresora en cada pedido para imprimir usando el diálogo del sistema. Activa la impresión directa para saltarte ese paso (requiere configurar la IP).
+          <p className="text-xs text-muted-foreground italic border-t border-border/50 pt-3">
+            El interruptor de impresión está <strong>APAGADO</strong>. No se realizarán intentos de conexión ni impresiones automáticas hasta que se active manualmente o se reinicie la app.
           </p>
         )}
       </div>
@@ -662,14 +817,16 @@ export function AdminDashboard() {
         </div>
         <button 
           onClick={() => {
-            const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
-            audio.play().catch(() => alert("Por favor, interactúa con la página primero para permitir sonidos."));
+            playNotificationSound();
           }}
-          className="bg-card border rounded-xl p-4 text-center hover:bg-muted transition-colors group"
+          className={cn(
+            "bg-card border rounded-xl p-4 text-center hover:bg-muted transition-colors group",
+            isAudioBlocked && "ring-2 ring-amber-500 bg-amber-50 dark:bg-amber-950/20"
+          )}
         >
           <div className="flex flex-col items-center gap-1">
-            <Volume2 className="w-6 h-6 text-primary group-hover:scale-110 transition-transform" />
-            <p className="text-xs font-bold">Probar Sonido</p>
+            <Volume2 className={cn("w-6 h-6 transition-transform group-hover:scale-110", isAudioBlocked ? "text-amber-500" : "text-primary")} />
+            <p className={cn("text-xs font-bold", isAudioBlocked ? "text-amber-600" : "text-foreground")}>Probar Sonido</p>
           </div>
         </button>
       </div>

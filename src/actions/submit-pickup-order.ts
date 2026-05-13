@@ -15,7 +15,7 @@ export type SubmitOrderResult =
   | { ok: true; orderId: string; whatsappUrl: string }
   | {
       ok: false;
-      code: "VALIDATION" | "UNKNOWN_DISH" | "DATABASE" | "CONFIG" | "STORE_PAUSED";
+      code: "VALIDATION" | "UNKNOWN_DISH" | "DATABASE" | "CONFIG" | "STORE_PAUSED" | "UNAUTHORIZED";
       message: string;
     };
 
@@ -60,6 +60,24 @@ export async function submitPickupOrderAction(
       ok: false,
       code: "CONFIG",
       message: "supabase_env",
+    };
+  }
+
+  // ─── 0. Verificar Autenticación ─────────────────────────────────────────────
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      ok: false,
+      code: "UNAUTHORIZED",
+      message: "session_required",
+    };
+  }
+
+  if (!user.email_confirmed_at) {
+    return {
+      ok: false,
+      code: "UNAUTHORIZED",
+      message: "email_not_confirmed",
     };
   }
 

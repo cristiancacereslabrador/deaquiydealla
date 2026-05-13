@@ -136,7 +136,8 @@
       "UNKNOWN_DISH": "A dish is no longer on the menu or is out of stock. Return to the cart and refresh.",
       "CONFIG": "Supabase environment variables are missing on the server (.env.local).",
       "DATABASE": "Could not save the order: {detail}",
-      "STORE_PAUSED": "The restaurant has temporarily paused incoming orders due to high demand."
+      "STORE_PAUSED": "The restaurant has temporarily paused incoming orders due to high demand.",
+      "UNAUTHORIZED": "You must sign in and confirm your email to place an order."
     }
   },
   "CheckoutSuccess": {

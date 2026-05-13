@@ -1,58 +1,44 @@
 ================================================================================
   TAREAS PENDIENTES — DE AQUÍ Y DE ALLÁ
 ================================================================================
-[COMPLETADO] LEER ESTA URL ALLI SE PUEDEN OBTENER LAS FOTOS Y LAS DESCRIPCIONES 
-DE LOS PLATOS PARA EL RESTAURANTE
-https://glovoapp.com/es/es/granada/stores/de-aqui-y-de-alla-comida-para-llevar-granada
 
 1. [COMPLETADO] CONFIGURAR CREDENCIALES DE SUPABASE
-   -----------------------------------
-   Edita el archivo `.env.local` en la raíz del proyecto y rellena los siguientes
-   valores con los datos de tu panel de Supabase (Settings -> API):
-   
-   - NEXT_PUBLIC_SUPABASE_URL= (Tu URL de proyecto)
-   - NEXT_PUBLIC_SUPABASE_ANON_KEY= (Tu clave anónima pública)
-
 2. [COMPLETADO] CONFIGURAR BASE DE DATOS (MIGRACIONES)
-   --------------------------------------
-   Debes ejecutar los siguientes archivos SQL en el "SQL Editor" de tu panel de
-   Supabase para que las tablas de pedidos y stock funcionen:
-   
-   - supabase/migrations/001_pedidos.sql
-   - supabase/migrations/002_admin_setup.sql
-
 3. [COMPLETADO] EJECUTAR EL PROYECTO
-   ---------------------
-   Abre una terminal en esta carpeta y ejecuta:
-   npm run dev
-   
-   Luego abre: http://127.0.0.1:3286 en tu navegador.
+4. [COMPLETADO] SISTEMA DE REGISTRO DE CLIENTES
+5. [COMPLETADO] ELIMINAR NÚMERO DE REVIEWS EN BOTÓN GOOGLE
+6. [COMPLETADO] PANEL DE RECETAS Y COSTES
 
 ================================================================================
-4. [COMPLETADO] SISTEMA DE REGISTRO DE CLIENTES
-   -----------------------------------------
-   Implementar formulario de registro para capturar:
-   - Nombre completo.
-   - Teléfono de contacto.
-   - Dirección de entrega (para pedidos a domicilio).
-   
-   Objetivo: Crear una base de datos de clientes en Supabase para fidelización 
-   y agilizar futuros pedidos.
+7. FINALIZAR AUTENTICACIÓN CON GOOGLE (PARA MAÑANA)
+   ---------------------------------------------------
+   - Obtener Client ID y Client Secret desde Google Cloud Console.
+   - Configurar la "Redirect URI" en Google Cloud (Callback URL de Supabase).
+   - Validar el flujo de inicio de sesión social en la web.
+   - IMPORTANTE: Eliminar los datos de prueba "deaquiydealla" de Supabase Auth.
+
+8. SEGURIDAD Y PREVENCIÓN DE PEDIDOS FALSOS
+   ---------------------------------------------------
+   - [COMPLETADO] Obligatoriedad de login para acceder al checkout.
+   - [COMPLETADO] Validación de correo electrónico (vía Auth Confirm o Google).
+   - [COMPLETADO] Protección en servidor (submit-pickup-order action).
+   - TAREA: Probar con un usuario real el envío del correo de confirmación.
+
+9. SEGUIMIENTO DE PEDIDOS EN TIEMPO REAL
+   ---------------------------------------------------
+   - [COMPLETADO] Barra de progreso en /order/[id].
+   - [COMPLETADO] Visualización de tiempo estimado (capturado desde admin).
+   - [COMPLETADO] Control manual del local (Abierto/Cerrado/Auto).
+
+10. AUTOMATIZACIÓN DE WHATSAPP (WhatsApp Business Cloud API)
+    ---------------------------------------------------
+    - Migrar del enlace manual (api.whatsapp.com) a mensajes automáticos vía API.
+    - Configurar Meta for Developers (Phone ID, Access Token).
+    - Crear plantillas de mensajes (Order Received, Order Ready).
 
 ================================================================================
 Archivo actualizado por Antigravity.
-
-
-5. [COMPLETADO] ELIMINAR NÚMERO DE REVIEWS EN BOTÓN GOOGLE
-   --------------------------------------------------------
-   Se han actualizado los archivos de traducción para eliminar el número
-   específico de clientes (53/50) y usar un texto más genérico y limpio.
-
-6. [COMPLETADO] PANEL DE RECETAS Y COSTES
-   ---------------------------------------------------
-   - Se ha mejorado el panel de Recetas para incluir platos personalizados.
-   - Cálculo automático de Food Cost por plato.
-   - Visualización de costes comerciales (Precio por Kg/L).
-   - SISTEMA DE UNIDADES INTELIGENTE: Entrada de datos en Kg, gr, Litros y ml
-     con conversión automática (sin cálculos manuales).
-   - Mejora en la interfaz de Inventario para facilitar la entrada de precios.
+Fecha: 2026-05-10
+Estado del local: Control manual de 3 estados activado.
+Tracking: Funcionando en tiempo real.
+Login Google: UI preparada, pendiente de credenciales reales.

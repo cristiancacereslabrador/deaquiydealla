@@ -136,7 +136,8 @@
       "UNKNOWN_DISH": "Hay un plato que ya no está en el menú o se agotó. Vuelve al carrito y actualiza.",
       "CONFIG": "Faltan variables de Supabase en el servidor (.env.local).",
       "DATABASE": "No se pudo guardar el pedido: {detail}",
-      "STORE_PAUSED": "Local cerrado temporalmente. Continuamos atendiendo en breve. ¡Gracias por tu paciencia!"
+      "STORE_PAUSED": "Local cerrado temporalmente. Continuamos atendiendo en breve. ¡Gracias por tu paciencia!",
+      "UNAUTHORIZED": "Debes iniciar sesión y confirmar tu correo electrónico para realizar un pedido."
     }
   },
   "CheckoutSuccess": {

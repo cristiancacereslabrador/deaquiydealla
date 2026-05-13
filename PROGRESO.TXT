@@ -4,88 +4,38 @@
 ================================================================================
 
 --------------------------------------------------------------------------------
-FASE 1 — Setup y Supabase
+FASE 1 a 7 — (Ver versiones anteriores para detalle histórico)
 --------------------------------------------------------------------------------
-Hecho:
-  - Next.js 16 App Router, TypeScript, Tailwind, src/.
-  - Dependencias: @supabase/supabase-js, @supabase/ssr, zustand, next-themes,
-    next-intl, zod, react-hook-form, @hookform/resolvers.
-  - Shadcn UI (init).
-  - Cliente Supabase: src/lib/supabase/client.ts, server.ts.
-  - .env.example con URL y anon key.
 
 --------------------------------------------------------------------------------
-FASE 2 — UI, layout, tema, i18n
+FASE 8 — Control de Estado, Tracking y Seguridad (Sesión 2026-05-10)
 --------------------------------------------------------------------------------
 Hecho:
-  - next-intl: rutas [locale], es por defecto, en con prefijo.
-  - next-themes, paleta restaurante (rojo/dorado), fuentes DM Sans + Cormorant.
-  - Cabecera / pie, selector idioma y tema simplificados a toggles de un clic.
-  - Marca: "De Aquí y De Allá". Dev server en 127.0.0.1:3686.
-
---------------------------------------------------------------------------------
-FASE 3 — Catálogo, Zustand, carrito
---------------------------------------------------------------------------------
-Hecho:
-  - Catálogo DISHES sincronizado exactamente con Glovo (14 platos, nombres y
-    descripciones reales del restaurante).
-  - Imágenes de todos los platos descargadas localmente en /public/images/dishes/
-    para evitar bloqueos de dominios externos y crashes de Turbopack.
-  - Bug crítico corregido: Zod usaba z.string().url() en el schema del carrito,
-    rechazando rutas relativas (/images/...) y bloqueando silenciosamente todas
-    las adiciones al carrito.
-  - Zustand + persist localStorage; validación con Zod.
-  - Páginas /menu y /cart; contador en cabecera; total en carrito.
-  - DishCard con alturas uniformes (h-full) para layout consistente.
-
---------------------------------------------------------------------------------
-FASE 4 — Checkout y base de datos (Supabase)
---------------------------------------------------------------------------------
-Hecho:
-  - SQL: 001_pedidos.sql y 002_admin_setup.sql ejecutados en producción.
-  - Bug crítico corregido: NEXT_PUBLIC_SUPABASE_URL tenía /rest/v1/ al final,
-    causando error "Invalid path specified in request URL".
-  - Server action submit-pickup-order.ts con insert a Supabase funcional.
-  - UI Checkout con react-hook-form + Zod.
-  - Página de éxito mejorada: ícono de check, ID de pedido prominente, instrucción
-    de recogida y botón de reenvío de WhatsApp por si el popup fue bloqueado.
-
---------------------------------------------------------------------------------
-FASE 5 Y 6 — WhatsApp, Admin Panel, Toggles de Stock
---------------------------------------------------------------------------------
-Hecho:
-  - Flujo WhatsApp Golden Standard: al confirmar pedido, se abre automáticamente
-    WhatsApp con mensaje pre-formateado (ID, líneas, alérgenos, IVA, total) 
-    dirigido al número de prueba +51980675172.
-  - Número de producción del restaurante: +34 603 37 06 63 (configurar en deploy).
-  - ✅ Gestión de Precios en Tiempo Real (Supabase Realtime)
-  - ✅ Añadir nuevos platos con subida de imágenes a Supabase Storage
-  - ✅ Sistema de Unidades Inteligente (Kg, gr, L, ml) con conversión automática
-  - ✅ Gestión de Categorías Dinámica: Añade o elimina secciones de la carta desde el panel
-  - ✅ Integración de Platos Personalizados en el Menú Público
-  - ✅ Food Cost y Margen Bruto calculado automáticamente por plato
-  - ✅ Botón de Pánico y Toggle de Stock funcionando (Admin)
-  - ✅ Eliminación de "Escandallos" por "Recetas" (Terminology)
-  - Botón "Listo para Recoger" en admin abre WhatsApp al cliente con mensaje
-    indicando que su pedido está listo.
-
---------------------------------------------------------------------------------
-FASE 7 — Estabilidad, Refinamiento y PWA (Sesión 2026-04-27)
---------------------------------------------------------------------------------
-Hecho:
-  - ✅ Precisión de Inventario: Migración 007 aplicada (NUMERIC) para permitir
-    costes de ingredientes con precisión de milésimas (crucial para g/ml).
-  - ✅ Reports Dashboard: Implementada vista de cierre de caja con cálculo de
-    Food Cost real basado en recetas y pedidos completados.
-  - ✅ Botón de Cierre por WhatsApp: Envío de métricas financieras al dueño.
-  - ✅ Modo Menú QR: Implementación inicial de la carta digital estática.
-  - ✅ Limpieza Maestra: Eliminación de productos de muestra (hardcoded) y
-    transición completa al catálogo dinámico de Supabase.
+  - ✅ SISTEMA DE ESTADOS DE 3 MODOS: Reemplazado el "botón de pánico" por un sistema
+    de anulación manual inteligente (Auto / Forzar Abierto / Forzar Cerrado).
+  - ✅ TRACKING DE PEDIDOS REALTIME: Página /order/[id] con barra de progreso
+    animada y suscripción directa a cambios en Supabase.
+  - ✅ TIEMPO ESTIMADO DE PREPARACIÓN: El admin puede definir los minutos al aceptar
+    un pedido y el cliente los ve reflejados al instante en su panel.
+  - ✅ SEGURIDAD ANTI-PEDIDOS FALSOS: Implementada restricción de Checkout solo para
+    usuarios logueados y con correo electrónico confirmado (verified).
+  - ✅ INTEGRACIÓN GOOGLE OAUTH: Preparada la UI de Login/Registro con botón de
+    "Continuar con Google" y ruta de callback configurada.
+  - ✅ MEJORAS VISUALES PREMIUM: Aplicados efectos de glassmorphism, sombras internas
+    y micro-animaciones en el seguimiento de pedidos.
 
 En curso:
-  - Refinamiento de PWA y soporte offline.
-  - Modo "Mesa" (?modo=mesa) para desactivar carrito en local.
-  - Historial de reportes (ayer/mes) en el panel de administración.
+  - Configuración final de Google Cloud Console (Client ID / Secret).
+  - Activación de plantillas de correo en Supabase para el flujo de verificación.
+  - Automatización de WhatsApp vía Business API (Meta Cloud API).
 
-Última actualización: 2026-04-27 23:00 +02:00
+Próximos Pasos:
+  - Pruebas finales del flujo de usuario autenticado (E2E).
+  - Integración de notificaciones sonoras en el panel de admin (Web Audio API).
 
+Última actualización: 2026-05-10 03:15 +02:00
+================================================================================
+Archivo actualizado por Antigravity.
+Total pedidos registrados hoy: Ver Dashboard.
+Estado del Local: Configurable manualmente.
+Auth Google: En proceso de credenciales.

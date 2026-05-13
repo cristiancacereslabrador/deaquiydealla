@@ -95,7 +95,9 @@ export function CheckoutPageClient({
               ? t("server.CONFIG")
               : result.code === "STORE_PAUSED"
                 ? t("server.STORE_PAUSED")
-                : t("server.DATABASE", { detail: result.message });
+                : result.code === "UNAUTHORIZED"
+                  ? t("server.UNAUTHORIZED")
+                  : t("server.DATABASE", { detail: result.message });
       setBanner(msg);
       return;
     }

@@ -5,6 +5,7 @@ import { useRouter } from "@/i18n/navigation";
 import { signInAction } from "@/actions/auth-actions";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
+import { SocialLogin } from "@/components/auth/social-login";
 import { Utensils } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -73,6 +74,8 @@ export default function LoginPage() {
             {loading ? "..." : t("loginBtn")}
           </Button>
         </form>
+
+        <SocialLogin />
 
         <div className="text-center text-sm">
           <Link href="/register" className="font-bold text-[#c8102e] hover:underline">
