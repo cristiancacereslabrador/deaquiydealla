@@ -440,7 +440,7 @@ export function AdminDashboard() {
   useEffect(() => {
     Promise.all([
       supabase.from("pedidos").select("*").order("created_at", { ascending: true }).limit(100),
-      supabase.from("store_settings").select("id, value").in("id", ["panic_button", "weekly_schedule"]),
+      supabase.from("store_settings").select("id, value").in("id", ["store_status", "weekly_schedule"]),
       supabase.from("dish_status").select("*"),
       supabase.from("custom_dishes").select("*").is("deleted_at", null),
       supabase.from("dish_price_overrides").select("*"),

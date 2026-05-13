@@ -19,7 +19,7 @@ export function StoreStatusBanner() {
   const [, setTick] = useState(0);
 
   useEffect(() => {
-    startTransition(() => setMounted(true));
+    setMounted(true);
     const supabase = createBrowserSupabaseClient();
 
     // Carga inicial del estado manual y horario
@@ -30,7 +30,9 @@ export function StoreStatusBanner() {
       .then(({ data }) => {
         if (data) {
           const status = data.find(d => d.id === "store_status");
-          if (status?.value?.manual_override) setManualOverride(status.value.manual_override);
+          if (status?.value) {
+            setManualOverride(status.value.manual_override ?? null);
+          }
 
           const schedule = data.find(d => d.id === "weekly_schedule");
           if (schedule?.value?.schedule) setScheduleData(schedule.value.schedule);
