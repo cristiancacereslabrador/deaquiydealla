@@ -120,7 +120,7 @@ async function sendToEpsonDirect(order: Order, ip: string) {
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
   <s:Body>
     <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-      <text font="font_a" align="center">${nameToPrint}&#10;</text>
+      <text font="font_a" width="2" height="2" align="center" emphasized="true">${nameToPrint}&#10;</text>
       <text align="center">Pedido: #${order.id.slice(0, 8)}&#10;</text>
       <feed unit="12"/>
       <text font="font_a" align="left">Cliente: ${order.customer_name}&#10;</text>
@@ -499,6 +499,7 @@ export function AdminDashboard() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "pedidos" }, (payload) => {
         const newOrder = payload.new as Order;
         setOrders(prev => [...prev, newOrder]);
+        addLog(`Pedido #${newOrder.id.slice(0,8)} detectado. Auto-print: ${isAutoPrintEnabled ? "SÍ" : "NO"}`);
         
         // Reproducir sonido
         playNotificationSound();
