@@ -385,11 +385,14 @@ export function AdminDashboard() {
   // Cargar configuración de impresora y gestionar auto-conexión
   useEffect(() => {
     const savedIp = localStorage.getItem("admin_printer_ip");
-    // Al abrir la app, siempre se activa (según requerimiento del usuario)
-    // a menos que explícitamente se guardara como apagado en el pasado? 
-    // "El interruptor de encendido de impresion se debe activar solo cuando se abra la app"
+    const savedAuto = localStorage.getItem("admin_auto_print") === "true";
+    
+    // Si hay una IP guardada la usamos, si no, se queda la fija por defecto (192.168.1.136)
     if (savedIp) setPrinterIp(savedIp);
-    setIsDirectPrintEnabled(true); 
+    
+    // Según requerimiento: "El interruptor de encendido de impresion se debe activar solo cuando se abra la app"
+    setIsDirectPrintEnabled(true);
+    setIsAutoPrintEnabled(savedAuto);
   }, []);
 
   // Verificar conexión con la impresora
@@ -424,13 +427,7 @@ export function AdminDashboard() {
     }
   }, [isDirectPrintEnabled, printerIp, checkPrinterConnection]);
 
-  useEffect(() => {
-    const savedIp = localStorage.getItem("admin_printer_ip");
-    const savedAuto = localStorage.getItem("admin_auto_print") === "true";
-    if (savedIp) setPrinterIp(savedIp);
-    setIsDirectPrintEnabled(true); 
-    setIsAutoPrintEnabled(savedAuto);
-  }, []);
+
 
   const savePrinterConfig = (ip: string, enabled: boolean, auto?: boolean) => {
     setPrinterIp(ip);
