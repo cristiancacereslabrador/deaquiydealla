@@ -105,54 +105,37 @@ function waUrl(phone: string, message: string): string {
 }
 
 /**
- * @description Escapa caracteres especiales para XML.
- */
-function escapeXml(unsafe: string): string {
-  return unsafe.replace(/[<>&'"]/g, (c) => {
-    switch (c) {
-      case "<": return "&lt;";
-      case ">": return "&gt;";
-      case "&": return "&amp;";
-      case "'": return "&apos;";
-      case "\"": return "&quot;";
-      default: return c;
-    }
-  });
-}
-
-/**
  * @description Envía un pedido directamente a una impresora Epson TM mediante ePOS-Print XML.
- * @param order - El pedido a imprimir.
- * @param ip - La dirección IP de la impresora.
+ * Versión revertida a la lógica estable que funcionaba originalmente.
  */
 async function sendToEpsonDirect(order: Order, ip: string) {
   if (!ip) throw new Error("No IP provided");
-  const url = `http://${ip}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=5000`;
+  const url = `http://${ip}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
   
-  // XML con escapes correctos y saltos de línea reales para evitar caracteres extraños
+  // XML con formato exacto de la versión anterior (usando \\n literal)
   let xml = `<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
   <s:Body>
     <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-      <text font="font_a" width="2" height="2" align="center">${escapeXml(BRAND_INFO.name.toUpperCase())}\n</text>
-      <text align="center">Pedido: #${order.id.slice(0, 8)}\n</text>
-      <feed unit="8"/>
-      <text align="left">Cliente: ${escapeXml(order.customer_name)}\n</text>
-      <text align="left">Tlf: ${order.customer_phone}\n</text>
-      <text align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}\n</text>
-      <text>------------------------------------------\n</text>
+      <text font="font_a" width="2" height="2" align="center">${BRAND_INFO.name.toUpperCase()}\\n</text>
+      <text align="center">Pedido: #${order.id.slice(0, 8)}\\n</text>
+      <feed unit="10"/>
+      <text align="left">Cliente: ${order.customer_name}\\n</text>
+      <text align="left">Tlf: ${order.customer_phone}\\n</text>
+      <text align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}\\n</text>
+      <text>------------------------------------------\\n</text>
   `;
 
   order.lines.forEach(l => {
     const name = l.nameEs || l.nameEn || l.dishId;
-    xml += `<text font="font_a" width="1" height="1">${l.quantity}x ${escapeXml(name)}\n</text>`;
+    xml += `<text font="font_a" width="1" height="1">${l.quantity}x ${name}\\n</text>`;
   });
 
   xml += `
-      <text>------------------------------------------\n</text>
-      <text font="font_a" width="1" height="1" align="right">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}\n</text>
-      <feed unit="12"/>
-      <text align="center">¡DE AQUI Y DE ALLA!\n</text>
+      <text>------------------------------------------\\n</text>
+      <text font="font_a" width="2" height="2" align="right">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}\\n</text>
+      <feed unit="30"/>
+      <text align="center">¡DE AQUI Y DE ALLA!\\n</text>
       <cut type="feed"/>
     </epos-print>
   </s:Body>
@@ -163,6 +146,7 @@ async function sendToEpsonDirect(order: Order, ip: string) {
       method: "POST",
       headers: {
         "Content-Type": "text/xml; charset=utf-8",
+        "If-Modified-Since": "Thu, 01 Jan 1970 00:00:00 GMT"
       },
       body: xml
     });
@@ -409,16 +393,9 @@ export function AdminDashboard() {
     }
   }, [isDirectPrintEnabled]);
 
-  // Efecto de reconexión cada 2 minutos si falla
-  useEffect(() => {
-    if (!isDirectPrintEnabled || printerStatus === "online") return;
+  // El chequeo automático se ha deshabilitado para evitar saturar la conexión
+  // y permitir que el flujo de impresión sea más directo como antes.
 
-    const interval = setInterval(() => {
-      checkPrinterConnection(printerIp);
-    }, 120000); // 2 minutos
-
-    return () => clearInterval(interval);
-  }, [isDirectPrintEnabled, printerStatus, printerIp, checkPrinterConnection]);
 
   // Verificar al cambiar IP o activar
   useEffect(() => {
@@ -817,11 +794,22 @@ export function AdminDashboard() {
               )}
               
               <button 
-                onClick={() => checkPrinterConnection(printerIp)}
+                onClick={async () => {
+                  setPrinterStatus("checking");
+                  const testOrder = { id: "TEST", customer_name: "PRUEBA", customer_phone: "000", created_at: new Date().toISOString(), total_cents: 0, lines: [] } as any;
+                  try {
+                    await sendToEpsonDirect(testOrder, printerIp);
+                    setPrinterStatus("online");
+                    alert("¡Ticket de prueba enviado!");
+                  } catch (err) {
+                    setPrinterStatus("offline");
+                    alert("Error de conexión con la impresora. Revisa la IP y que la impresora esté encendida.");
+                  }
+                }}
                 disabled={printerStatus === "checking"}
                 className={cn(buttonVariants({ variant: "outline", size: "sm" }), "font-bold h-10")}
               >
-                Probar
+                Probar Impresión
               </button>
             </div>
           </div>
