@@ -123,22 +123,20 @@ async function sendToEpsonDirect(order: Order, ip: string) {
       <text font="font_a" align="center">${nameToPrint}&#10;</text>
       <text align="center">Pedido: #${order.id.slice(0, 8)}&#10;</text>
       <feed unit="12"/>
-      <text font="font_b" align="left">Cliente: ${order.customer_name}&#10;</text>
-      <text font="font_b" align="left">Tlf: ${order.customer_phone}&#10;</text>
-      <text font="font_b" align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}&#10;</text>
+      <text font="font_a" align="left">Cliente: ${order.customer_name}&#10;</text>
+      <text font="font_a" align="left">Tlf: ${order.customer_phone}&#10;</text>
+      <text font="font_a" align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}&#10;</text>
       <text>------------------------------------------&#10;</text>`;
 
   order.lines.forEach(l => {
     const name = l.nameEs || l.nameEn || l.dishId;
-    xml += `\n      <text font="font_b">${l.quantity}x ${name}&#10;</text>`;
+    xml += `\n      <text font="font_a" width="1" height="1">${l.quantity}x ${name}&#10;</text>`;
   });
 
   xml += `
       <text>------------------------------------------&#10;</text>
       <text font="font_a" align="right">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}&#10;</text>
-      <feed unit="48"/>
-      <text font="font_b" align="center">¡DE AQUI Y DE ALLA!&#10;</text>
-      <feed unit="48"/>
+      <feed unit="60"/>
       <cut type="feed"/>
     </epos-print>
   </s:Body>
@@ -345,7 +343,7 @@ export function AdminDashboard() {
   const [weeklySchedule, setWeeklySchedule] = useState<DaySchedule[]>(DEFAULT_DAILY_SCHEDULE);
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
   const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
-  const [printerIp, setPrinterIp] = useState("192.168.1.54");
+  const [printerIp, setPrinterIp] = useState("192.168.1.136");
   const [isDirectPrintEnabled, setIsDirectPrintEnabled] = useState(true);
   const [isAutoPrintEnabled, setIsAutoPrintEnabled] = useState(false);
   const [isPrinterEditing, setIsPrinterEditing] = useState(false);
@@ -391,10 +389,17 @@ export function AdminDashboard() {
     setPrinterStatus("checking");
     addLog(`Iniciando prueba de conexión a ${ip}...`);
     try {
-      const testOrder = { id: "TEST", customer_name: "PRUEBA", customer_phone: "000", created_at: new Date().toISOString(), total_cents: 0, lines: [] } as any;
-      await sendToEpsonDirect(testOrder, ip);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const url = `http://${ip}/cgi-bin/epos/service.cgi?devid=local_printer`;
+      
+      // Intentamos un fetch simple (no-cors) para verificar si el host responde
+      // sin llegar a enviar un comando de impresión.
+      await fetch(url, { method: "HEAD", mode: "no-cors", signal: controller.signal });
+      clearTimeout(timeoutId);
+      
       setPrinterStatus("online");
-      addLog("Conexión exitosa. Ticket de prueba enviado.", "info");
+      addLog("Impresora detectada (Ping OK).", "info");
     } catch (err: any) {
       setPrinterStatus("offline");
       const name = err?.name || "Error";
@@ -499,7 +504,7 @@ export function AdminDashboard() {
         playNotificationSound();
 
         // Impresión Automática si está activa
-        if (isAutoPrintEnabled && printerIp) {
+        if (isDirectPrintEnabled && isAutoPrintEnabled && printerIp) {
           sendToEpsonDirect(newOrder, printerIp).catch(err => {
             console.error("Auto-print failed:", err);
           });
@@ -527,7 +532,7 @@ export function AdminDashboard() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [supabase]);
+  }, [supabase, isDirectPrintEnabled, isAutoPrintEnabled, printerIp, playNotificationSound]);
 
   /* ── Advance order status ── */
   const advanceOrder = useCallback(async (order: Order, minutes?: number) => {
@@ -717,7 +722,7 @@ export function AdminDashboard() {
                   printerStatus === "online" ? "text-green-600 dark:text-green-400" : 
                   printerStatus === "offline" ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
                 )}>
-                  {printerStatus === "online" ? "En Línea" : 
+                  {printerStatus === "online" ? "CONECTADO" : 
                    printerStatus === "offline" ? "Desconectada" : 
                    printerStatus === "checking" ? "Verificando..." : "Inactiva"}
                 </span>
