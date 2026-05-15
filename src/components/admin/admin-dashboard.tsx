@@ -107,9 +107,6 @@ function waUrl(phone: string, message: string): string {
 /**
  * @description Envía un pedido directamente a una impresora Epson TM mediante ePOS-Print XML.
  * REVERSIÓN TOTAL A VERSIÓN ORIGINAL (0637ed07).
- */
-/**
- * @description Envía un pedido directamente a una impresora Epson TM mediante ePOS-Print XML.
  * Ajustado para evitar bloqueos de seguridad de Chrome (Mixed Content/CORS).
  */
 async function sendToEpsonDirect(order: Order, ip: string) {
@@ -123,25 +120,25 @@ async function sendToEpsonDirect(order: Order, ip: string) {
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
   <s:Body>
     <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-      <text font="font_a" width="2" height="2" align="center">${nameToPrint}\\n</text>
-      <text align="center">Pedido: #${order.id.slice(0, 8)}\\n</text>
-      <feed unit="10"/>
-      <text align="left">Cliente: ${order.customer_name}\\n</text>
-      <text align="left">Tlf: ${order.customer_phone}\\n</text>
-      <text align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}\\n</text>
-      <text>------------------------------------------\\n</text>
-  `;
+      <text font="font_a" align="center">${nameToPrint}&#10;</text>
+      <text align="center">Pedido: #${order.id.slice(0, 8)}&#10;</text>
+      <feed unit="12"/>
+      <text font="font_b" align="left">Cliente: ${order.customer_name}&#10;</text>
+      <text font="font_b" align="left">Tlf: ${order.customer_phone}&#10;</text>
+      <text font="font_b" align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}&#10;</text>
+      <text>------------------------------------------&#10;</text>`;
 
   order.lines.forEach(l => {
     const name = l.nameEs || l.nameEn || l.dishId;
-    xml += `<text font="font_a" width="1" height="1">${l.quantity}x ${name}\\n</text>`;
+    xml += `\n      <text font="font_b">${l.quantity}x ${name}&#10;</text>`;
   });
 
   xml += `
-      <text>------------------------------------------\\n</text>
-      <text font="font_a" width="2" height="2" align="right">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}\\n</text>
-      <feed unit="30"/>
-      <text align="center">¡DE AQUI Y DE ALLA!\\n</text>
+      <text>------------------------------------------&#10;</text>
+      <text font="font_a" align="right">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}&#10;</text>
+      <feed unit="48"/>
+      <text font="font_b" align="center">¡DE AQUI Y DE ALLA!&#10;</text>
+      <feed unit="48"/>
       <cut type="feed"/>
     </epos-print>
   </s:Body>
@@ -348,7 +345,7 @@ export function AdminDashboard() {
   const [weeklySchedule, setWeeklySchedule] = useState<DaySchedule[]>(DEFAULT_DAILY_SCHEDULE);
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
   const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
-  const [printerIp, setPrinterIp] = useState("192.168.1.136");
+  const [printerIp, setPrinterIp] = useState("192.168.1.54");
   const [isDirectPrintEnabled, setIsDirectPrintEnabled] = useState(true);
   const [isAutoPrintEnabled, setIsAutoPrintEnabled] = useState(false);
   const [isPrinterEditing, setIsPrinterEditing] = useState(false);
@@ -698,20 +695,20 @@ export function AdminDashboard() {
       )}
 
       <div className="bg-card border rounded-2xl p-5 space-y-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
             <div className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-sm",
               printerStatus === "online" ? "bg-green-100 text-green-600 dark:bg-green-950/40" : 
               printerStatus === "offline" ? "bg-red-100 text-red-600 dark:bg-red-950/40" : "bg-muted text-muted-foreground"
             )}>
-              <Printer className="w-5 h-5" />
+              <Printer className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-bold text-lg leading-tight">Impresora Epson</h3>
-              <div className="flex items-center gap-2 mt-0.5">
+              <h3 className="font-bold text-lg leading-tight">Impresora Térmica</h3>
+              <div className="flex items-center gap-2 mt-1">
                 <span className={cn(
-                  "w-3 h-3 rounded-full border border-black/10 shadow-sm",
+                  "w-2.5 h-2.5 rounded-full border border-black/5 shadow-sm",
                   printerStatus === "online" ? "bg-green-500 animate-pulse" : 
                   printerStatus === "offline" ? "bg-red-500" : "bg-muted"
                 )} />
@@ -720,42 +717,43 @@ export function AdminDashboard() {
                   printerStatus === "online" ? "text-green-600 dark:text-green-400" : 
                   printerStatus === "offline" ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
                 )}>
-                  {printerStatus === "online" ? "Conectada" : 
+                  {printerStatus === "online" ? "En Línea" : 
                    printerStatus === "offline" ? "Desconectada" : 
                    printerStatus === "checking" ? "Verificando..." : "Inactiva"}
                 </span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Activar Impresión:</span>
+          
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 sm:gap-6 border-t sm:border-t-0 pt-4 sm:pt-0">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Impresión:</span>
               <button
                 onClick={() => setIsDirectPrintEnabled(!isDirectPrintEnabled)}
                 className={cn(
-                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                  "relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
                   isDirectPrintEnabled ? "bg-blue-600" : "bg-muted"
                 )}
               >
                 <span className={cn(
-                  "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                  "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out",
                   isDirectPrintEnabled ? "translate-x-5" : "translate-x-0"
                 )} />
               </button>
             </div>
 
-            <div className="flex items-center gap-2 border-l pl-4">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Auto-Imprimir:</span>
+            <div className="flex flex-col gap-1.5 border-l pl-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Auto-Ticket:</span>
               <button
                 onClick={() => savePrinterConfig(printerIp, isDirectPrintEnabled, !isAutoPrintEnabled)}
                 className={cn(
-                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                  "relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
                   isAutoPrintEnabled ? "bg-amber-500" : "bg-muted"
                 )}
                 title="Imprime automáticamente al recibir un nuevo pedido"
               >
                 <span className={cn(
-                  "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                  "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out",
                   isAutoPrintEnabled ? "translate-x-5" : "translate-x-0"
                 )} />
               </button>
@@ -764,28 +762,28 @@ export function AdminDashboard() {
         </div>
         
         {isDirectPrintEnabled && (
-          <div className="space-y-3 pt-2 border-t border-border/50">
-            <div className="flex gap-3 items-end">
-              <div className="flex-1 space-y-1">
+          <div className="space-y-4 pt-4 border-t border-border/50">
+            <div className="flex flex-col md:flex-row gap-3 items-end">
+              <div className="w-full space-y-1.5">
                 <label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Dirección IP de la Impresora</label>
-                <div className="relative">
+                <div className="relative group">
                   <input 
                     type="text" 
-                    placeholder="Ej: 192.168.1.136"
+                    placeholder="Ej: 192.168.1.54"
                     value={printerIp}
                     disabled={!isPrinterEditing}
                     onChange={(e) => setPrinterIp(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-70 disabled:bg-muted/30"
+                    className="flex h-12 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm ring-offset-background transition-all placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-70 disabled:bg-muted/30 font-mono"
                   />
                   {isPrinterEditing && (
-                    <div className="absolute right-2 top-1.5 flex gap-1">
+                    <div className="absolute right-2 top-2 flex gap-1">
                       <button 
                         onClick={() => {
                           const saved = localStorage.getItem("admin_printer_ip");
                           if (saved) setPrinterIp(saved);
                           setIsPrinterEditing(false);
                         }}
-                        className="text-[10px] font-bold bg-muted px-2 py-1 rounded hover:bg-muted/80"
+                        className="text-[10px] font-bold bg-muted hover:bg-muted/80 px-3 py-1.5 rounded-lg shadow-sm transition-colors"
                       >
                         Cancelar
                       </button>
@@ -794,30 +792,31 @@ export function AdminDashboard() {
                 </div>
               </div>
               
-              {!isPrinterEditing ? (
+              <div className="grid grid-cols-2 gap-2 w-full md:w-auto shrink-0">
+                {!isPrinterEditing ? (
+                  <button 
+                    onClick={() => setIsPrinterEditing(true)}
+                    className={cn(buttonVariants({ variant: "outline" }), "font-bold h-12 rounded-xl border-2")}
+                  >
+                    Editar IP
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => savePrinterConfig(printerIp, isDirectPrintEnabled)}
+                    className={cn(buttonVariants({ variant: "default" }), "font-bold h-12 rounded-xl bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20")}
+                  >
+                    Guardar IP
+                  </button>
+                )}
+                
                 <button 
-                  onClick={() => setIsPrinterEditing(true)}
-                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "font-bold h-10")}
+                  onClick={() => checkPrinterConnection(printerIp)}
+                  disabled={printerStatus === "checking"}
+                  className={cn(buttonVariants({ variant: "outline" }), "font-bold h-12 rounded-xl border-2")}
                 >
-                  Editar IP
+                  {printerStatus === "checking" ? "..." : "Probar"}
                 </button>
-              ) : (
-                <button 
-                  onClick={() => savePrinterConfig(printerIp, isDirectPrintEnabled)}
-                  className={cn(buttonVariants({ variant: "default", size: "sm" }), "font-bold h-10 bg-green-600 hover:bg-green-700")}
-                >
-                  Guardar IP
-                </button>
-              )}
-              
-              <button 
-                onClick={() => checkPrinterConnection(printerIp)}
-
-                disabled={printerStatus === "checking"}
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "font-bold h-10")}
-              >
-                Probar Impresión
-              </button>
+              </div>
             </div>
           </div>
         )}
