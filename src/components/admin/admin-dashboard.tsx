@@ -106,53 +106,53 @@ function waUrl(phone: string, message: string): string {
 
 /**
  * @description Envía un pedido directamente a una impresora Epson TM mediante ePOS-Print XML.
- * Versión revertida a la lógica estable que funcionaba originalmente.
+ * Optimizado para compatibilidad máxima con Android/Chrome en redes locales.
  */
 async function sendToEpsonDirect(order: Order, ip: string) {
   if (!ip) throw new Error("No IP provided");
   const url = `http://${ip}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
   
-  // XML con formato exacto de la versión anterior (usando \\n literal)
+  // Usamos saltos de línea reales (\n) que es lo que suelen esperar las térmicas
   let xml = `<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
   <s:Body>
     <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-      <text font="font_a" width="2" height="2" align="center">${BRAND_INFO.name.toUpperCase()}\\n</text>
-      <text align="center">Pedido: #${order.id.slice(0, 8)}\\n</text>
-      <feed unit="10"/>
-      <text align="left">Cliente: ${order.customer_name}\\n</text>
-      <text align="left">Tlf: ${order.customer_phone}\\n</text>
-      <text align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}\\n</text>
-      <text>------------------------------------------\\n</text>
+      <text font="font_a" width="2" height="2" align="center">${order.customer_name.toUpperCase()}\n</text>
+      <text align="center">Pedido: #${order.id.slice(0, 8)}\n</text>
+      <feed unit="12"/>
+      <text align="left">Cliente: ${order.customer_name}\n</text>
+      <text align="left">Tlf: ${order.customer_phone}\n</text>
+      <text align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}\n</text>
+      <text>------------------------------------------\n</text>
   `;
 
   order.lines.forEach(l => {
     const name = l.nameEs || l.nameEn || l.dishId;
-    xml += `<text font="font_a" width="1" height="1">${l.quantity}x ${name}\\n</text>`;
+    xml += `<text font="font_a" width="1" height="1">${l.quantity}x ${name}\n</text>`;
   });
 
   xml += `
-      <text>------------------------------------------\\n</text>
-      <text font="font_a" width="2" height="2" align="right">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}\\n</text>
+      <text>------------------------------------------\n</text>
+      <text font="font_a" width="2" height="2" align="right">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}\n</text>
       <feed unit="30"/>
-      <text align="center">¡DE AQUI Y DE ALLA!\\n</text>
+      <text align="center">¡DE AQUI Y DE ALLA!\n</text>
       <cut type="feed"/>
     </epos-print>
   </s:Body>
 </s:Envelope>`;
 
   try {
-    const response = await fetch(url, {
+    // El modo 'no-cors' es CLAVE para que Chrome Android deje salir la petición a una IP local
+    await fetch(url, {
       method: "POST",
+      mode: "no-cors", 
       headers: {
-        "Content-Type": "text/xml; charset=utf-8",
-        "If-Modified-Since": "Thu, 01 Jan 1970 00:00:00 GMT"
+        "Content-Type": "text/plain; charset=utf-8", 
       },
       body: xml
     });
-
-    if (!response.ok) throw new Error("Status " + response.status);
-    return response.text();
+    
+    return "Sent (no-cors mode)";
   } catch (error) {
     LoggerService.error("sendToEpsonDirect", error, { ip, orderId: order.id });
     throw error;
