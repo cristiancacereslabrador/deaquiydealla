@@ -121,12 +121,12 @@ async function sendToEpsonDirect(order: Order, ip: string) {
   <s:Body>
     <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
       <text font="font_a" width="2" height="2" align="center" emphasized="true">${nameToPrint}&#10;</text>
-      <text align="center">Pedido: #${order.id.slice(0, 8)}&#10;</text>
+      <text font="font_a" width="1" height="1" align="center">Pedido: #${order.id.slice(0, 8)}&#10;</text>
       <feed unit="12"/>
-      <text font="font_a" align="left">Cliente: ${order.customer_name}&#10;</text>
-      <text font="font_a" align="left">Tlf: ${order.customer_phone}&#10;</text>
-      <text font="font_a" align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}&#10;</text>
-      <text>------------------------------------------&#10;</text>`;
+      <text font="font_a" width="1" height="1" align="left">Cliente: ${order.customer_name}&#10;</text>
+      <text font="font_a" width="1" height="1" align="left">Tlf: ${order.customer_phone}&#10;</text>
+      <text font="font_a" width="1" height="1" align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}&#10;</text>
+      <text font="font_a" width="1" height="1">------------------------------------------&#10;</text>`;
 
   order.lines.forEach(l => {
     const name = l.nameEs || l.nameEn || l.dishId;
@@ -134,8 +134,8 @@ async function sendToEpsonDirect(order: Order, ip: string) {
   });
 
   xml += `
-      <text>------------------------------------------&#10;</text>
-      <text font="font_a" align="right">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}&#10;</text>
+      <text font="font_a" width="1" height="1">------------------------------------------&#10;</text>
+      <text font="font_a" width="1" height="1" align="right">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}&#10;</text>
       <feed unit="60"/>
       <cut type="feed"/>
     </epos-print>
@@ -496,31 +496,22 @@ export function AdminDashboard() {
 
     /* ── Realtime subscriptions ── */
     const channel = supabase.channel("admin_kanban")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "pedidos" }, (payload) => {
-        const newOrder = payload.new as Order;
-        setOrders(prev => [...prev, newOrder]);
-        addLog(`Pedido #${newOrder.id.slice(0,8)} detectado. Auto-print: ${isAutoPrintEnabled ? "SÍ" : "NO"}`);
-        
-        // Reproducir sonido
-        playNotificationSound();
-
-        // Impresión Automática si está activa
-        if (isDirectPrintEnabled && isAutoPrintEnabled && printerIp) {
-          sendToEpsonDirect(newOrder, printerIp).catch(err => {
-            console.error("Auto-print failed:", err);
-          });
-        }
-        
-        if ("Notification" in window && Notification.permission === "granted") {
+      .on("postgres_changes", { event: "*", schema: "public", table: "pedidos" }, (payload) => {
+        if (payload.eventType === "INSERT") {
           const newOrder = payload.new as Order;
-          new Notification("¡Nuevo Pedido Web!", {
-            body: `Pedido de ${newOrder.customer_name} por ${formatCentsToCurrency(newOrder.total_cents, "es")}`,
-            icon: "/hugo.png"
-          });
+          console.log("REALTIME INSERT:", newOrder);
+          setOrders(prev => [...prev, newOrder]);
+          addLog(`Pedido #${newOrder.id.slice(0,8)} detectado. Auto-print: ${isAutoPrintEnabled ? "SÍ" : "NO"}`);
+          
+          playNotificationSound();
+          if (isDirectPrintEnabled && isAutoPrintEnabled && printerIp) {
+            sendToEpsonDirect(newOrder, printerIp).catch(err => {
+              addLog(`Error Auto-print: ${err.message}`, "error");
+            });
+          }
+        } else if (payload.eventType === "UPDATE") {
+          setOrders(prev => prev.map(o => o.id === payload.new.id ? payload.new as Order : o));
         }
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "pedidos" }, (payload) => {
-        setOrders(prev => prev.map(o => o.id === payload.new.id ? payload.new as Order : o));
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "store_settings" }, (payload) => {
         if (payload.new.id === "store_status") setManualStatus(payload.new.value.manual_override);
@@ -530,7 +521,9 @@ export function AdminDashboard() {
         const row = payload.new as DishStatus;
         if (row) setOutOfStock(prev => ({ ...prev, [row.dish_id]: !row.is_available }));
       })
-      .subscribe();
+      .subscribe((status) => {
+        addLog(`Canal Pedidos: ${status.toUpperCase()}`, status === "SUBSCRIBED" ? "info" : "error");
+      });
 
     return () => { supabase.removeChannel(channel); };
   }, [supabase, isDirectPrintEnabled, isAutoPrintEnabled, printerIp, playNotificationSound]);
