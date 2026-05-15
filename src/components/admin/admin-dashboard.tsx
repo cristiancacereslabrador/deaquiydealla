@@ -106,20 +106,24 @@ function waUrl(phone: string, message: string): string {
 
 /**
  * @description Envía un pedido directamente a una impresora Epson TM mediante ePOS-Print XML.
- * Optimizado para compatibilidad máxima con Android/Chrome en redes locales.
+ * REVERSIÓN TOTAL A VERSIÓN ORIGINAL (0637ed07).
+ */
+/**
+ * @description Envía un pedido directamente a una impresora Epson TM mediante ePOS-Print XML.
+ * Ajustado para evitar bloqueos de seguridad de Chrome (Mixed Content/CORS).
  */
 async function sendToEpsonDirect(order: Order, ip: string) {
   if (!ip) throw new Error("No IP provided");
   const url = `http://${ip}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
   
-  // Usamos saltos de línea reales (\n) que es lo que suelen esperar las térmicas
+  // Usamos saltos de línea reales \n que son más estándar
   let xml = `<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
   <s:Body>
     <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-      <text font="font_a" width="2" height="2" align="center">${order.customer_name.toUpperCase()}\n</text>
+      <text font="font_a" width="2" height="2" align="center">${BRAND_INFO.name.toUpperCase()}\n</text>
       <text align="center">Pedido: #${order.id.slice(0, 8)}\n</text>
-      <feed unit="12"/>
+      <feed unit="10"/>
       <text align="left">Cliente: ${order.customer_name}\n</text>
       <text align="left">Tlf: ${order.customer_phone}\n</text>
       <text align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}\n</text>
@@ -142,17 +146,18 @@ async function sendToEpsonDirect(order: Order, ip: string) {
 </s:Envelope>`;
 
   try {
-    // El modo 'no-cors' es CLAVE para que Chrome Android deje salir la petición a una IP local
-    await fetch(url, {
+    const response = await fetch(url, {
       method: "POST",
-      mode: "no-cors", 
       headers: {
-        "Content-Type": "text/plain; charset=utf-8", 
+        // Usar text/plain evita que el navegador haga una petición OPTIONS (Preflight)
+        // que la impresora no soporta.
+        "Content-Type": "text/plain; charset=utf-8"
       },
       body: xml
     });
-    
-    return "Sent (no-cors mode)";
+
+    if (!response.ok) throw new Error("Status " + response.status);
+    return response.text();
   } catch (error) {
     LoggerService.error("sendToEpsonDirect", error, { ip, orderId: order.id });
     throw error;
@@ -353,6 +358,13 @@ export function AdminDashboard() {
   const [isPrinterEditing, setIsPrinterEditing] = useState(false);
   const [printerStatus, setPrinterStatus] = useState<"idle" | "checking" | "online" | "offline">("idle");
   const [isAudioBlocked, setIsAudioBlocked] = useState(false);
+  
+  // ─── Debug Console ───
+  const [debugLogs, setDebugLogs] = useState<{ time: string, msg: string, type: "error" | "info" }[]>([]);
+  const addLog = useCallback((msg: string, type: "error" | "info" = "info") => {
+    setDebugLogs(prev => [{ time: new Date().toLocaleTimeString(), msg, type }, ...prev].slice(0, 20));
+  }, []);
+
 
   // Función para reproducir sonido con reintento si está bloqueado
   const playNotificationSound = useCallback(async () => {
@@ -379,22 +391,28 @@ export function AdminDashboard() {
     setIsAutoPrintEnabled(savedAuto);
   }, []);
 
-  // Verificar conexión con la impresora
+  // El chequeo automático se ha deshabilitado para evitar saturar la conexión
+  // y permitir que el flujo de impresión sea más directo como antes.
   const checkPrinterConnection = useCallback(async (ip: string) => {
     if (!ip || !isDirectPrintEnabled) return;
     setPrinterStatus("checking");
+    addLog(`Iniciando prueba de conexión a ${ip}...`);
     try {
-      // Un test ligero: pedir estado o enviar un XML vacío
-      const testOrder = { id: "PING", customer_name: "", customer_phone: "", created_at: new Date().toISOString(), total_cents: 0, lines: [] } as any;
+      const testOrder = { id: "TEST", customer_name: "PRUEBA", customer_phone: "000", created_at: new Date().toISOString(), total_cents: 0, lines: [] } as any;
       await sendToEpsonDirect(testOrder, ip);
       setPrinterStatus("online");
-    } catch (err) {
+      addLog("Conexión exitosa. Ticket de prueba enviado.", "info");
+    } catch (err: any) {
       setPrinterStatus("offline");
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      addLog(`ERROR: ${errorMsg}`, "error");
+      
+      // Ayuda específica para Mixed Content
+      if (window.location.protocol === "https:" && ip.startsWith("192.")) {
+        addLog("NOTA: Estás en HTTPS intentando conectar a IP local. Chrome podría bloquearlo.", "error");
+      }
     }
-  }, [isDirectPrintEnabled]);
-
-  // El chequeo automático se ha deshabilitado para evitar saturar la conexión
-  // y permitir que el flujo de impresión sea más directo como antes.
+  }, [isDirectPrintEnabled, addLog]);
 
 
   // Verificar al cambiar IP o activar
@@ -794,18 +812,8 @@ export function AdminDashboard() {
               )}
               
               <button 
-                onClick={async () => {
-                  setPrinterStatus("checking");
-                  const testOrder = { id: "TEST", customer_name: "PRUEBA", customer_phone: "000", created_at: new Date().toISOString(), total_cents: 0, lines: [] } as any;
-                  try {
-                    await sendToEpsonDirect(testOrder, printerIp);
-                    setPrinterStatus("online");
-                    alert("¡Ticket de prueba enviado!");
-                  } catch (err) {
-                    setPrinterStatus("offline");
-                    alert("Error de conexión con la impresora. Revisa la IP y que la impresora esté encendida.");
-                  }
-                }}
+                onClick={() => checkPrinterConnection(printerIp)}
+
                 disabled={printerStatus === "checking"}
                 className={cn(buttonVariants({ variant: "outline", size: "sm" }), "font-bold h-10")}
               >
@@ -814,6 +822,30 @@ export function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* ── Consola de Depuración (Debug Console) ── */}
+        <div className="mt-4 border-t border-border/50 pt-4">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+              Consola de Depuración (Logs)
+            </h4>
+            <button onClick={() => setDebugLogs([])} className="text-[9px] text-primary hover:underline">Limpiar Logs</button>
+          </div>
+          <div className="bg-slate-950 rounded-xl p-3 font-mono text-[10px] space-y-1.5 max-h-40 overflow-y-auto shadow-inner border border-white/5">
+            {debugLogs.length === 0 ? (
+              <p className="text-slate-600 italic">No hay actividad reciente...</p>
+            ) : (
+              debugLogs.map((log, i) => (
+                <div key={i} className={cn("break-all flex gap-2", log.type === "error" ? "text-red-400" : "text-green-400")}>
+                  <span className="text-slate-600 shrink-0">[{log.time}]</span>
+                  <span>{log.msg}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
         
         {!isDirectPrintEnabled && (
           <p className="text-xs text-muted-foreground italic border-t border-border/50 pt-3">
