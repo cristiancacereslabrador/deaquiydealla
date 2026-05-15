@@ -116,52 +116,48 @@ async function sendToEpsonDirect(order: Order, ip: string) {
   if (!ip) throw new Error("No IP provided");
   const url = `http://${ip}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
   
-  // Usamos saltos de línea reales \n que son más estándar
+  // Normalizar a ASCII para evitar fallos de codificación en la prueba
+  const nameToPrint = BRAND_INFO.name.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  
   let xml = `<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
   <s:Body>
     <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-      <text font="font_a" width="2" height="2" align="center">${BRAND_INFO.name.toUpperCase()}\n</text>
-      <text align="center">Pedido: #${order.id.slice(0, 8)}\n</text>
+      <text font="font_a" width="2" height="2" align="center">${nameToPrint}\\n</text>
+      <text align="center">Pedido: #${order.id.slice(0, 8)}\\n</text>
       <feed unit="10"/>
-      <text align="left">Cliente: ${order.customer_name}\n</text>
-      <text align="left">Tlf: ${order.customer_phone}\n</text>
-      <text align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}\n</text>
-      <text>------------------------------------------\n</text>
+      <text align="left">Cliente: ${order.customer_name}\\n</text>
+      <text align="left">Tlf: ${order.customer_phone}\\n</text>
+      <text align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}\\n</text>
+      <text>------------------------------------------\\n</text>
   `;
 
   order.lines.forEach(l => {
     const name = l.nameEs || l.nameEn || l.dishId;
-    xml += `<text font="font_a" width="1" height="1">${l.quantity}x ${name}\n</text>`;
+    xml += `<text font="font_a" width="1" height="1">${l.quantity}x ${name}\\n</text>`;
   });
 
   xml += `
-      <text>------------------------------------------\n</text>
-      <text font="font_a" width="2" height="2" align="right">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}\n</text>
+      <text>------------------------------------------\\n</text>
+      <text font="font_a" width="2" height="2" align="right">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}\\n</text>
       <feed unit="30"/>
-      <text align="center">¡DE AQUI Y DE ALLA!\n</text>
+      <text align="center">¡DE AQUI Y DE ALLA!\\n</text>
       <cut type="feed"/>
     </epos-print>
   </s:Body>
 </s:Envelope>`;
 
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        // Usar text/plain evita que el navegador haga una petición OPTIONS (Preflight)
-        // que la impresora no soporta.
-        "Content-Type": "text/plain; charset=utf-8"
-      },
-      body: xml
-    });
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/xml; charset=utf-8",
+      "If-Modified-Since": "Thu, 01 Jan 1970 00:00:00 GMT"
+    },
+    body: xml
+  });
 
-    if (!response.ok) throw new Error("Status " + response.status);
-    return response.text();
-  } catch (error) {
-    LoggerService.error("sendToEpsonDirect", error, { ip, orderId: order.id });
-    throw error;
-  }
+  if (!response.ok) throw new Error("Status " + response.status);
+  return response.text();
 }
 
 /* ─── Order Card ─────────────────────────────────────────────────────── */
@@ -404,12 +400,15 @@ export function AdminDashboard() {
       addLog("Conexión exitosa. Ticket de prueba enviado.", "info");
     } catch (err: any) {
       setPrinterStatus("offline");
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      addLog(`ERROR: ${errorMsg}`, "error");
+      const name = err?.name || "Error";
+      const msg = err?.message || String(err);
+      addLog(`[${name}] ${msg}`, "error");
       
-      // Ayuda específica para Mixed Content
-      if (window.location.protocol === "https:" && ip.startsWith("192.")) {
-        addLog("NOTA: Estás en HTTPS intentando conectar a IP local. Chrome podría bloquearlo.", "error");
+      // Ayuda específica para Mixed Content (solo si el error parece ser de red)
+      if (msg.includes("failed") || msg.includes("fetch")) {
+        if (window.location.protocol === "https:" && ip.startsWith("192.")) {
+          addLog("Posible bloqueo HTTPS -> IP local. Prueba entrar por HTTP.", "error");
+        }
       }
     }
   }, [isDirectPrintEnabled, addLog]);
