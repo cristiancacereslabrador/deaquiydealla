@@ -122,7 +122,7 @@ async function sendToEpsonDirect(order: Order, ip: string) {
     <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
       <symbol type="logo" key1="32" key2="32" align="center" />
       <feed unit="12"/>
-      <text font="font_a" width="2" height="2" align="center" emphasized="true">${nameToPrint}&#10;</text>
+      <text font="font_a" align="center">${nameToPrint}&#10;</text>
       <text font="font_a" align="center">Pedido: #${order.id.slice(0, 8)}&#10;</text>
       <feed unit="12"/>
       <text font="font_a" align="left">Cliente: ${order.customer_name}&#10;</text>
@@ -132,12 +132,12 @@ async function sendToEpsonDirect(order: Order, ip: string) {
 
   order.lines.forEach(l => {
     const name = l.nameEs || l.nameEn || l.dishId;
-    xml += `\n      <text font="font_a" emphasized="true">${l.quantity}x ${name}&#10;</text>`;
+    xml += `\n      <text font="font_a">${l.quantity}x ${name}&#10;</text>`;
   });
 
   xml += `
       <text font="font_a">------------------------------&#10;</text>
-      <text font="font_a" align="right" emphasized="true">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}&#10;</text>
+      <text font="font_a" align="right">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}&#10;</text>
       <feed unit="60"/>
       <cut type="feed"/>
     </epos-print>
