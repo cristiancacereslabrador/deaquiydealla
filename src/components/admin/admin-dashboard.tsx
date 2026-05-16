@@ -120,9 +120,8 @@ async function sendToEpsonDirect(order: Order, ip: string) {
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
   <s:Body>
     <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-      <symbol type="logo" key1="32" key2="32" align="center" />
+      <logo key1="32" key2="32" align="center" />
       <feed unit="12"/>
-      <text font="font_a" align="center">${nameToPrint}&#10;</text>
       <text font="font_a" align="center">Pedido: #${order.id.slice(0, 8)}&#10;</text>
       <feed unit="12"/>
       <text font="font_a" align="left">Cliente: ${order.customer_name}&#10;</text>
@@ -648,7 +647,9 @@ export function AdminDashboard() {
             }
           `}} />
           <div className="text-center space-y-1">
-            <h1 className="text-lg font-bold uppercase">{BRAND_INFO.name}</h1>
+            <div className="flex justify-center mb-2">
+              <img src="/images/splash-icon.png" alt="Logo" className="h-16 w-auto object-contain" />
+            </div>
             <p className="text-[11px] font-bold">Pedido: #{orderToPrint.id.slice(0, 8)}</p>
             <div className="border-b border-dashed border-black my-2" />
           </div>
@@ -689,9 +690,6 @@ export function AdminDashboard() {
           </div>
 
           <div className="border-b border-dashed border-black my-2" />
-          <p className="text-center text-[10px] italic mt-2 uppercase tracking-widest">
-            ¡De Aquí y De Allá!
-          </p>
         </div>
       )}
 
