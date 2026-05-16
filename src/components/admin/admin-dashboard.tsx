@@ -120,7 +120,7 @@ async function sendToEpsonDirect(order: Order, ip: string) {
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
   <s:Body>
     <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-      <symbol type="logo" key1="48" key2="48" align="center" />
+      <symbol type="logo" key1="32" key2="32" align="center" />
       <feed unit="12"/>
       <text font="font_a" width="2" height="2" align="center" emphasized="true">${nameToPrint}&#10;</text>
       <text font="font_a" align="center">Pedido: #${order.id.slice(0, 8)}&#10;</text>
@@ -128,7 +128,7 @@ async function sendToEpsonDirect(order: Order, ip: string) {
       <text font="font_a" align="left">Cliente: ${order.customer_name}&#10;</text>
       <text font="font_a" align="left">Tlf: ${order.customer_phone}&#10;</text>
       <text font="font_a" align="left">Fecha: ${new Date(order.created_at).toLocaleString("es-ES")}&#10;</text>
-      <text font="font_a">------------------------------------------&#10;</text>`;
+      <text font="font_a">------------------------------&#10;</text>`;
 
   order.lines.forEach(l => {
     const name = l.nameEs || l.nameEn || l.dishId;
@@ -136,7 +136,7 @@ async function sendToEpsonDirect(order: Order, ip: string) {
   });
 
   xml += `
-      <text font="font_a">------------------------------------------&#10;</text>
+      <text font="font_a">------------------------------&#10;</text>
       <text font="font_a" align="right" emphasized="true">TOTAL: ${formatCentsToCurrency(order.total_cents, "es")}&#10;</text>
       <feed unit="60"/>
       <cut type="feed"/>

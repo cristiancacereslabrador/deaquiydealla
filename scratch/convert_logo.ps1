@@ -1,0 +1,10 @@
+Add-Type -AssemblyName System.Drawing
+$img = [System.Drawing.Image]::FromFile("C:\Users\Cristian Vianey\.gemini\antigravity\brain\2a6b7f11-6e05-4751-8269-0b1afe6ebfca\logo_58mm_final_1778889337277.png")
+$bmp = New-Object System.Drawing.Bitmap(360, 100)
+$g = [System.Drawing.Graphics]::FromImage($bmp)
+$g.Clear([System.Drawing.Color]::White)
+$g.DrawImage($img, 0, 0, 360, 100)
+$bmp.Save("c:\Users\Cristian Vianey\Documents\+HUGO-APP\deaquiydealla\public\images\logo_58mm_final.bmp", [System.Drawing.Imaging.ImageFormat]::Bmp)
+$bmp.Dispose()
+$img.Dispose()
+$g.Dispose()
