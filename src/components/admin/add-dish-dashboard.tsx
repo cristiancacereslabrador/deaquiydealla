@@ -258,6 +258,9 @@ export function AddDishDashboard() {
       if (insertError) {
         // If duplicate slug, clean up the uploaded image
         await supabase.storage.from("dish-images").remove([filePath]);
+        if (insertError.code === "23505" || insertError.message.includes("duplicate key")) {
+          throw new Error("Ya existe un plato con ese nombre (quizás está oculto o borrado). Por favor, usa un nombre diferente o cámbiale alguna letra.");
+        }
         throw new Error(`Error al guardar el plato: ${insertError.message}`);
       }
 
