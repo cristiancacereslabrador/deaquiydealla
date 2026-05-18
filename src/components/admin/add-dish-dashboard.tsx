@@ -18,14 +18,7 @@ import Image from "next/image";
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
 
-type DishCategory =
-  | "entrantes"
-  | "combos"
-  | "arroces"
-  | "vegetales"
-  | "tallarines"
-  | "otros"
-  | "bebidas";
+type DishCategory = string;
 
 type Allergen =
   | "gluten"
@@ -81,7 +74,7 @@ const INITIAL_FORM: FormState = {
   nameEn: "",
   descriptionEs: "",
   descriptionEn: "",
-  category: "entrantes",
+  category: "",
   priceCents: "",
   allergens: [],
 };
@@ -144,9 +137,6 @@ export function AddDishDashboard() {
         const { data, error } = await supabase.from("categories").select("id, name_es").order("sort_order");
         if (error) throw error;
         setCategories(data || []);
-        if (data && data.length > 0) {
-          setForm(p => ({ ...p, category: data[0].id as any }));
-        }
       } catch (err) {
         LoggerService.error("AddDishDashboard:loadCategories", err);
       } finally {
@@ -225,6 +215,7 @@ export function AddDishDashboard() {
 
     // ── Client-side validation ──
     if (!form.nameEs.trim()) { setFormError("El nombre en español es obligatorio."); return; }
+    if (!form.category) { setFormError("Debes seleccionar una categoría."); return; }
     const cents = euroStringToCents(form.priceCents);
     if (cents === null) { setFormError("El precio no es válido. Usa el formato 10,50"); return; }
     if (!imageFile) { setFormError("Debes subir una imagen para el plato."); return; }
@@ -272,7 +263,7 @@ export function AddDishDashboard() {
 
       // ── Success ──
       setSuccess(true);
-      setForm(INITIAL_FORM);
+      setForm(prev => ({ ...INITIAL_FORM, category: prev.category }));
       setImageFile(null);
       setImagePreview(null);
       setTimeout(() => setSuccess(false), 4000);
@@ -451,11 +442,14 @@ export function AddDishDashboard() {
               className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
             >
               {loadingCategories ? (
-                <option>Cargando categorías...</option>
+                <option value="">Cargando categorías...</option>
               ) : (
-                categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name_es}</option>
-                ))
+                <>
+                  <option value="" disabled>Seleccione una categoría...</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name_es}</option>
+                  ))}
+                </>
               )}
             </select>
           </div>
