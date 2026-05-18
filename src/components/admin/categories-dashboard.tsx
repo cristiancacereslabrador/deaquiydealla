@@ -187,7 +187,7 @@ export function CategoriesDashboard() {
                 <td className="px-4 py-3">{cat.name_es}</td>
                 <td className="px-4 py-3 text-muted-foreground">{cat.name_en}</td>
                 <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-end gap-1 transition-opacity">
                     <button 
                       onClick={() => moveCategory(idx, 'up')}
                       disabled={idx === 0}
