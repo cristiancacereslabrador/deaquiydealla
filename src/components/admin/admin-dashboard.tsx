@@ -120,7 +120,7 @@ async function sendToEpsonDirect(order: Order, ip: string) {
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
   <s:Body>
     <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-      <logo key1="32" key2="32" align="center" />
+      <text font="font_a" dw="true" dh="true" b="true" align="center">DE AQUI Y DE ALLA&#10;</text>
       <feed unit="12"/>
       <text font="font_a" align="center">Pedido: #${order.id.slice(0, 8)}&#10;</text>
       <feed unit="12"/>
@@ -156,6 +156,41 @@ async function sendToEpsonDirect(order: Order, ip: string) {
   return response.text();
 }
 
+/**
+ * @description Envía una impresión de prueba.
+ */
+async function sendTestPrint(ip: string) {
+  if (!ip) throw new Error("No IP provided");
+  const url = `http://${ip}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
+  
+  let xml = `<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Body>
+    <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
+      <text font="font_a" dw="true" dh="true" b="true" align="center">DE AQUI Y DE ALLA&#10;</text>
+      <feed unit="12"/>
+      <text font="font_a" align="center">Impresión de Prueba&#10;</text>
+      <feed unit="12"/>
+      <text font="font_a" align="center">Conexión Exitosa&#10;</text>
+      <feed unit="60"/>
+      <cut type="feed"/>
+    </epos-print>
+  </s:Body>
+</s:Envelope>`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/xml; charset=utf-8",
+      "If-Modified-Since": "Thu, 01 Jan 1970 00:00:00 GMT"
+    },
+    body: xml
+  });
+
+  if (!response.ok) throw new Error("Status " + response.status);
+  return response.text();
+}
+
 /* ─── Order Card ─────────────────────────────────────────────────────── */
 
 function OrderCard({ 
@@ -172,6 +207,7 @@ function OrderCard({
   onPrintManual: (order: Order) => void;
 }) {
   const [isPrinting, setIsPrinting] = useState(false);
+  const [customMinutes, setCustomMinutes] = useState(15);
   const col = COLUMN_CONFIG[order.status as Column];
   // eslint-disable-next-line react-hooks/purity
   const elapsed = Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60000);
@@ -282,30 +318,33 @@ function OrderCard({
         {/* Advance status button */}
         {col.next && (
           order.status === "pending" ? (
-            <div className="space-y-2">
+            <div className="space-y-2 mt-2 border-t pt-2 border-border/40">
               <p className="text-[10px] text-center font-bold text-orange-600 uppercase">¿En cuánto tiempo estará?</p>
-              <div className="grid grid-cols-4 gap-1">
-                {[5, 10, 15, 20].map(mins => (
-                  <button
-                    key={mins}
-                    onClick={() => onAdvance(order, mins)}
-                    className={cn(
-                      buttonVariants({ size: "sm", variant: "outline" }),
-                      "h-8 text-[10px] px-0 font-bold border-orange-200 hover:bg-orange-100 hover:text-orange-700"
-                    )}
-                  >
-                    {mins}'
-                  </button>
-                ))}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCustomMinutes(m => Math.max(5, m - 5))}
+                  className={cn(buttonVariants({ size: "sm", variant: "outline" }), "px-2 h-8 font-bold border-orange-200 text-orange-700")}
+                >
+                  -
+                </button>
+                <div className="flex-1 text-center font-bold text-sm bg-orange-50 dark:bg-orange-950/20 py-1 rounded-md border border-orange-200">
+                  {customMinutes} min
+                </div>
+                <button
+                  onClick={() => setCustomMinutes(m => m + 5)}
+                  className={cn(buttonVariants({ size: "sm", variant: "outline" }), "px-2 h-8 font-bold border-orange-200 text-orange-700")}
+                >
+                  +
+                </button>
               </div>
               <button
-                onClick={() => onAdvance(order)}
+                onClick={() => onAdvance(order, customMinutes)}
                 className={cn(
-                  buttonVariants({ size: "sm", variant: "ghost" }),
-                  "w-full h-7 text-[9px] text-muted-foreground underline"
+                  buttonVariants({ size: "sm" }),
+                  "w-full h-8 text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white"
                 )}
               >
-                Aceptar sin tiempo
+                ACEPTAR
               </button>
             </div>
           ) : (
@@ -346,7 +385,6 @@ export function AdminDashboard() {
   const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
   const [printerIp, setPrinterIp] = useState("192.168.1.136");
   const [isDirectPrintEnabled, setIsDirectPrintEnabled] = useState(true);
-  const [isAutoPrintEnabled, setIsAutoPrintEnabled] = useState(false);
   const [isPrinterEditing, setIsPrinterEditing] = useState(false);
   const [printerStatus, setPrinterStatus] = useState<"idle" | "checking" | "online" | "offline">("idle");
   const [isAudioBlocked, setIsAudioBlocked] = useState(false);
@@ -373,42 +411,31 @@ export function AdminDashboard() {
   // Cargar configuración de impresora y gestionar auto-conexión
   useEffect(() => {
     const savedIp = localStorage.getItem("admin_printer_ip");
-    const savedAuto = localStorage.getItem("admin_auto_print") === "true";
-    
     // Si hay una IP guardada la usamos, si no, se queda la fija por defecto (192.168.1.136)
     if (savedIp) setPrinterIp(savedIp);
     
     // Según requerimiento: "El interruptor de encendido de impresion se debe activar solo cuando se abra la app"
     setIsDirectPrintEnabled(true);
-    setIsAutoPrintEnabled(savedAuto);
   }, []);
 
-  // El chequeo automático se ha deshabilitado para evitar saturar la conexión
-  // y permitir que el flujo de impresión sea más directo como antes.
+  // Se ha cambiado la URL de verificación a la raíz de la impresora (interfaz web).
+  // Esto evita enviar peticiones incompletas al servicio ePOS que causaban que la impresora expulsara papel.
   const checkPrinterConnection = useCallback(async (ip: string) => {
     if (!ip || !isDirectPrintEnabled) return;
     setPrinterStatus("checking");
-    addLog(`Iniciando prueba de conexión a ${ip}...`);
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
-      const url = `http://${ip}/cgi-bin/epos/service.cgi?devid=local_printer`;
       
-      // Intentamos un fetch simple (no-cors) para verificar si el host responde
-      // sin llegar a enviar un comando de impresión.
-      await fetch(url, { method: "HEAD", mode: "no-cors", signal: controller.signal });
+      // Hacemos un ping a la página web de administración de la impresora (EpsonNet).
+      // Esto confirma que está viva en la red, sin tocar el sistema de impresión.
+      await fetch(`http://${ip}/`, { method: "GET", mode: "no-cors", signal: controller.signal });
       clearTimeout(timeoutId);
       
       setPrinterStatus("online");
-      addLog("Impresora detectada (Ping OK).", "info");
     } catch (err: any) {
       setPrinterStatus("offline");
-      const name = err?.name || "Error";
-      const msg = err?.message || String(err);
-      addLog(`[${name}] ${msg}`, "error");
-      
-      // Ayuda específica para Mixed Content (solo si el error parece ser de red)
-      if (msg.includes("failed") || msg.includes("fetch")) {
+      if (err?.message?.includes("failed") || err?.message?.includes("fetch")) {
         if (window.location.protocol === "https:" && ip.startsWith("192.")) {
           addLog("Posible bloqueo HTTPS -> IP local. Prueba entrar por HTTP.", "error");
         }
@@ -416,23 +443,46 @@ export function AdminDashboard() {
     }
   }, [isDirectPrintEnabled, addLog]);
 
-
-  // Verificar al cambiar IP o activar
+  // Verificar estado al cargar o al cambiar la IP, para que el indicador muestre CONECTADO
   useEffect(() => {
     if (isDirectPrintEnabled && printerIp) {
       checkPrinterConnection(printerIp);
+      
+      // Opcional: Verificar periódicamente cada 60 segundos
+      const interval = setInterval(() => {
+        checkPrinterConnection(printerIp);
+      }, 60000);
+      return () => clearInterval(interval);
     }
   }, [isDirectPrintEnabled, printerIp, checkPrinterConnection]);
 
+  const handleTestPrint = async () => {
+    if (!printerIp || !isDirectPrintEnabled) return;
+    setPrinterStatus("checking");
+    addLog(`Enviando impresión de prueba a ${printerIp}...`);
+    try {
+      await sendTestPrint(printerIp);
+      setPrinterStatus("online");
+      addLog("Impresión de prueba enviada exitosamente. Impresora conectada.", "info");
+    } catch (err: any) {
+      setPrinterStatus("offline");
+      const name = err?.name || "Error";
+      const msg = err?.message || String(err);
+      addLog(`[${name}] ${msg}`, "error");
+      
+      if (msg.includes("failed") || msg.includes("fetch")) {
+        if (window.location.protocol === "https:" && printerIp.startsWith("192.")) {
+          addLog("Posible bloqueo HTTPS -> IP local. Prueba entrar por HTTP.", "error");
+        }
+      }
+    }
+  };
 
 
-  const savePrinterConfig = (ip: string, enabled: boolean, auto?: boolean) => {
+
+  const savePrinterConfig = (ip: string, enabled: boolean) => {
     setPrinterIp(ip);
     setIsDirectPrintEnabled(enabled);
-    if (auto !== undefined) {
-      setIsAutoPrintEnabled(auto);
-      localStorage.setItem("admin_auto_print", String(auto));
-    }
     localStorage.setItem("admin_printer_ip", ip);
     setIsPrinterEditing(false);
   };
@@ -502,14 +552,9 @@ export function AdminDashboard() {
           const newOrder = payload.new as Order;
           console.log("REALTIME INSERT:", newOrder);
           setOrders(prev => [...prev, newOrder]);
-          addLog(`Pedido #${newOrder.id.slice(0,8)} detectado. Auto-print: ${isAutoPrintEnabled ? "SÍ" : "NO"}`);
+          addLog(`Pedido #${newOrder.id.slice(0,8)} detectado.`);
           
           playNotificationSound();
-          if (isDirectPrintEnabled && isAutoPrintEnabled && printerIp) {
-            sendToEpsonDirect(newOrder, printerIp).catch(err => {
-              addLog(`Error Auto-print: ${err.message}`, "error");
-            });
-          }
         } else if (payload.eventType === "UPDATE") {
           setOrders(prev => prev.map(o => o.id === payload.new.id ? payload.new as Order : o));
         }
@@ -527,7 +572,7 @@ export function AdminDashboard() {
       });
 
     return () => { supabase.removeChannel(channel); };
-  }, [supabase, isDirectPrintEnabled, isAutoPrintEnabled, printerIp, playNotificationSound]);
+  }, [supabase, isDirectPrintEnabled, printerIp, playNotificationSound, addLog]);
 
   /* ── Advance order status ── */
   const advanceOrder = useCallback(async (order: Order, minutes?: number) => {
@@ -547,6 +592,18 @@ export function AdminDashboard() {
       
       if (next === "accepted") {
         window.open(waUrl(order.customer_phone, buildAcceptedMessage(order, minutes)), "_blank");
+        
+        // Print ticket when accepting the order
+        if (isDirectPrintEnabled && printerIp) {
+          try {
+            await sendToEpsonDirect(order, printerIp);
+            setPrinterStatus("online");
+            addLog(`Impresión de pedido #${order.id.slice(0,8)} enviada al aceptar.`, "info");
+          } catch (err: any) {
+            setPrinterStatus("offline");
+            addLog(`Error al imprimir pedido #${order.id.slice(0,8)}: ${err.message}`, "error");
+          }
+        }
       } else if (next === "ready") {
         window.open(waUrl(order.customer_phone, buildReadyMessage(order)), "_blank");
       }
@@ -648,7 +705,7 @@ export function AdminDashboard() {
           `}} />
           <div className="text-center space-y-1">
             <div className="flex justify-center mb-2">
-              <img src="/images/splash-icon.png" alt="Logo" className="h-16 w-auto object-contain" />
+              <h1 className="text-2xl font-black uppercase whitespace-nowrap">DE AQUÍ Y DE ALLÁ</h1>
             </div>
             <p className="text-[11px] font-bold">Pedido: #{orderToPrint.id.slice(0, 8)}</p>
             <div className="border-b border-dashed border-black my-2" />
@@ -740,23 +797,6 @@ export function AdminDashboard() {
                 )} />
               </button>
             </div>
-
-            <div className="flex flex-col gap-1.5 border-l pl-4">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Auto-Ticket:</span>
-              <button
-                onClick={() => savePrinterConfig(printerIp, isDirectPrintEnabled, !isAutoPrintEnabled)}
-                className={cn(
-                  "relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                  isAutoPrintEnabled ? "bg-amber-500" : "bg-muted"
-                )}
-                title="Imprime automáticamente al recibir un nuevo pedido"
-              >
-                <span className={cn(
-                  "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out",
-                  isAutoPrintEnabled ? "translate-x-5" : "translate-x-0"
-                )} />
-              </button>
-            </div>
           </div>
         </div>
         
@@ -809,7 +849,7 @@ export function AdminDashboard() {
                 )}
                 
                 <button 
-                  onClick={() => checkPrinterConnection(printerIp)}
+                  onClick={handleTestPrint}
                   disabled={printerStatus === "checking"}
                   className={cn(buttonVariants({ variant: "outline" }), "font-bold h-12 rounded-xl border-2")}
                 >

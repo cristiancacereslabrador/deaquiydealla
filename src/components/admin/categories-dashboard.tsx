@@ -5,7 +5,7 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { LoggerService } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
-import { Layers, Plus, Trash2, Save, GripVertical } from "lucide-react";
+import { Layers, Plus, Trash2, Save, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
 
 export interface Category {
   id: string;
@@ -84,6 +84,34 @@ export function CategoriesDashboard() {
     }
   };
 
+  const moveCategory = async (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === categories.length - 1) return;
+
+    const newCategories = [...categories];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    const tempOrder = newCategories[index].sort_order;
+    newCategories[index].sort_order = newCategories[targetIndex].sort_order;
+    newCategories[targetIndex].sort_order = tempOrder;
+
+    const tempCat = newCategories[index];
+    newCategories[index] = newCategories[targetIndex];
+    newCategories[targetIndex] = tempCat;
+
+    setCategories([...newCategories]);
+
+    try {
+      await Promise.all([
+        supabase.from("categories").update({ sort_order: newCategories[index].sort_order }).eq("id", newCategories[index].id),
+        supabase.from("categories").update({ sort_order: newCategories[targetIndex].sort_order }).eq("id", newCategories[targetIndex].id)
+      ]);
+    } catch (err) {
+      LoggerService.error("CategoriesDashboard:moveCategory", err);
+      fetchCategories();
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center p-8"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
@@ -159,12 +187,31 @@ export function CategoriesDashboard() {
                 <td className="px-4 py-3">{cat.name_es}</td>
                 <td className="px-4 py-3 text-muted-foreground">{cat.name_en}</td>
                 <td className="px-4 py-3 text-right">
-                  <button 
-                    onClick={() => deleteCategory(cat.id)}
-                    className="text-red-500 hover:text-red-700 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => moveCategory(idx, 'up')}
+                      disabled={idx === 0}
+                      className="p-1 rounded hover:bg-muted text-muted-foreground disabled:opacity-30 transition-colors"
+                      title="Subir"
+                    >
+                      <ArrowUp className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => moveCategory(idx, 'down')}
+                      disabled={idx === categories.length - 1}
+                      className="p-1 rounded hover:bg-muted text-muted-foreground disabled:opacity-30 transition-colors"
+                      title="Bajar"
+                    >
+                      <ArrowDown className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => deleteCategory(cat.id)}
+                      className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-500/10 transition-colors"
+                      title="Eliminar"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
