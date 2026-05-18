@@ -167,11 +167,6 @@ export function MenuCatalog({ dishes, initialCategory }: { dishes: readonly Dish
           role="tablist"
           aria-label={t("filterAria")}
         >
-          <FilterChip
-            selected={active === "all"}
-            onClick={() => setActive("all")}
-            label={t("categoryAll")}
-          />
           {categories.map((cat) => (
             <FilterChip
               key={cat.id}
@@ -180,6 +175,11 @@ export function MenuCatalog({ dishes, initialCategory }: { dishes: readonly Dish
               label={locale === "en" && cat.name_en ? cat.name_en : cat.name_es}
             />
           ))}
+          <FilterChip
+            selected={active === "all"}
+            onClick={() => setActive("all")}
+            label={t("categoryAll")}
+          />
         </div>
       </div>
 
