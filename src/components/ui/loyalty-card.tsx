@@ -86,7 +86,7 @@ export function LoyaltyCard() {
           </div>
         ) : (
           <p className="text-[10px] italic text-white/60">
-            * Se aplicará un descuento equivalente al plato de menor valor de tu pedido.
+            En el pedido #11 → 1 bebida + papas para compartir GRATIS en pedidos desde 12,99 €
           </p>
         )}
       </div>
