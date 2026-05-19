@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cart-store";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { DISHES } from "@/data/dishes";
-import { Minus, Plus, Trash2, Sparkles, AlertTriangle } from "lucide-react";
+import { Minus, Plus, Trash2, Sparkles, AlertTriangle, Star, Gift } from "lucide-react";
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { startTransition, useEffect, useMemo, useState } from "react";
@@ -25,11 +25,26 @@ export function CartView({ allDishes }: { allDishes: any[] }) {
   const [manualOverride, setManualOverride] = useState<"open" | "closed" | null>(null);
   const [scheduleData, setScheduleData] = useState<DaySchedule[]>(DEFAULT_DAILY_SCHEDULE);
   const [outOfStockIds, setOutOfStockIds] = useState<Set<string>>(new Set());
+  const [loyaltyCount, setLoyaltyCount] = useState<number | null>(null);
 
   useEffect(() => {
     startTransition(() => setMounted(true));
     
     const supabase = createBrowserSupabaseClient();
+
+    // 0. Loyalty count for logged-in user
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase
+          .from("profiles")
+          .select("loyalty_count")
+          .eq("id", user.id)
+          .single()
+          .then(({ data }) => {
+            if (data) setLoyaltyCount(data.loyalty_count ?? 0);
+          });
+      }
+    });
 
     // 1. Settings (Manual Status + Schedule) validation
     supabase.from("store_settings").select("id, value").in("id", ["store_status", "weekly_schedule"]).then(({ data }) => {
@@ -157,6 +172,48 @@ export function CartView({ allDishes }: { allDishes: any[] }) {
           </div>
         </div>
       )}
+      {/* Banner de puntos de fidelidad */}
+      {loyaltyCount !== null && (() => {
+        // El pedido actual del carrito contará como 1 más, por eso -1
+        // Con 1 pedido hecho → este será el 2º → faltan 9 para llegar al 11º
+        const isReady = loyaltyCount >= 10;
+        const remaining = Math.max(0, 10 - loyaltyCount);
+        return (
+          <div className={cn(
+            "rounded-2xl p-4 flex items-center gap-4 border animate-in fade-in slide-in-from-top-2",
+            isReady
+              ? "bg-green-500/10 border-green-500/30 text-green-800 dark:text-green-300"
+              : "bg-amber-500/10 border-amber-500/30"
+          )}>
+            <div className="bg-amber-500/20 p-2 rounded-full shrink-0">
+              {isReady ? <Gift className="w-5 h-5 text-green-600" /> : <Star className="w-5 h-5 text-amber-600 fill-amber-500" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              {isReady ? (
+                <>
+                  <p className="font-bold text-sm">¡Tu regalo está listo! 🎉</p>
+                  <p className="text-xs text-muted-foreground">Tienes <strong>{loyaltyCount} pedidos</strong> acumulados. Avisa al local al recoger para disfrutar de tu bebida + papas GRATIS.</p>
+                </>
+              ) : (
+                <>
+                  <p className="font-bold text-sm text-amber-800 dark:text-amber-300">
+                    ⭐ Tienes <strong>{loyaltyCount}</strong> {loyaltyCount === 1 ? "pedido" : "pedidos"} acumulado{loyaltyCount === 1 ? "" : "s"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Te {remaining === 1 ? "falta" : "faltan"} <strong>{remaining} {remaining === 1 ? "pedido" : "pedidos"}</strong> para tu bebida + papas GRATIS 🍟
+                  </p>
+                </>
+              )}
+            </div>
+            {/* Mini barra de progreso: 10 casillas, cada pedido llena una */}
+            <div className="shrink-0 flex gap-0.5">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div key={i} className={cn("w-1.5 h-6 rounded-full", i < loyaltyCount || isReady ? "bg-amber-500" : "bg-muted")} />
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       <ul className="space-y-4">
         {items.map((line) => {
