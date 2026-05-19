@@ -221,7 +221,7 @@ function OrderCard({
   });
 
   const whatsappMessage = order.status === "pending" || order.status === "accepted"
-    ? buildAcceptedMessage(order)
+    ? buildAcceptedMessage(order, order.estimated_minutes || customMinutes)
     : buildReadyMessage(order);
 
   return (

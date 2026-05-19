@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { useCartStore } from "@/stores/cart-store";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { LoggerService } from "@/lib/logger";
 
 /**
  * Componente que muestra el último pedido guardado en localStorage.
@@ -22,32 +23,43 @@ export function LastOrderCard() {
   const router = useRouter();
 
   useEffect(() => {
-    const id = localStorage.getItem("last_order_id");
-    const cartStr = localStorage.getItem("last_order_cart");
-    const date = localStorage.getItem("last_order_at");
-
-    if (id && cartStr) {
-      try {
-        setLastOrder({
-          id,
-          items: JSON.parse(cartStr),
-          date: date || new Date().toISOString(),
-        });
-
-        // Consultar el estado real del pedido en Supabase
-        const supabase = createBrowserSupabaseClient();
-        supabase
-          .from("pedidos")
-          .select("status")
-          .eq("id", id)
-          .single()
-          .then(({ data }) => {
-            if (data) setOrderStatus(data.status);
-          });
-      } catch (e) {
-        // Data corrupta
+    const supabase = createBrowserSupabaseClient();
+    
+    // Validar si el usuario está autenticado antes de mostrar su último pedido
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
+        setLastOrder(null);
+        return;
       }
-    }
+
+      const id = localStorage.getItem("last_order_id");
+      const cartStr = localStorage.getItem("last_order_cart");
+      const date = localStorage.getItem("last_order_at");
+
+      if (id && cartStr) {
+        try {
+          setLastOrder({
+            id,
+            items: JSON.parse(cartStr),
+            date: date || new Date().toISOString(),
+          });
+
+          // Consultar el estado real del pedido en Supabase
+          supabase
+            .from("pedidos")
+            .select("status")
+            .eq("id", id)
+            .single()
+            .then(({ data }) => {
+              if (data) setOrderStatus(data.status);
+            });
+        } catch (e) {
+          LoggerService.error("LastOrderCard:loadLocalStorage", e);
+        }
+      }
+    }).catch((err) => {
+      LoggerService.error("LastOrderCard:getUser", err);
+    });
   }, []);
 
   if (!lastOrder) return null;

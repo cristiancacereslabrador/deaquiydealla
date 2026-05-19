@@ -55,7 +55,7 @@ export function LoyaltyCard() {
           </div>
           <div>
             <h3 className="text-xl font-bold font-heading">Tu Fidelidad tiene premio</h3>
-            <p className="text-xs text-white/80 font-medium">¡Cada 7 pedidos, el siguiente es GRATIS!*</p>
+            <p className="text-xs text-white/95 font-semibold">En el pedido #8 → 1 bebida + papas para compartir GRATIS en pedidos desde 12,99 €</p>
           </div>
         </div>
 
@@ -79,15 +79,11 @@ export function LoyaltyCard() {
           </div>
         </div>
 
-        {isReady ? (
+        {isReady && (
           <div className="bg-green-500/30 border border-green-400/50 rounded-xl p-3 flex items-center gap-3 animate-pulse">
             <Gift className="w-6 h-6" />
             <p className="text-sm font-bold">¡ENHORABUENA! Tu próximo pedido es gratis. Avisa al local al recogerlo.</p>
           </div>
-        ) : (
-          <p className="text-[10px] italic text-white/60">
-            En el pedido #8 → 1 bebida + papas para compartir GRATIS en pedidos desde 12,99 €
-          </p>
         )}
       </div>
     </div>
