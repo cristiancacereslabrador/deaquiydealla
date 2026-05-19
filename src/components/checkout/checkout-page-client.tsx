@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cart-store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
 /**
@@ -30,6 +30,8 @@ export function CheckoutPageClient({
   const clearCart = useCartStore((s) => s.clearCart);
   const [mounted, setMounted] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
+  /** Bandera para evitar que el redirect de carrito vacío compita con la nav al pedido. */
+  const isSubmittedRef = useRef(false);
 
   const totalCents = useMemo(
     () => items.reduce((a, i) => a + i.unitPriceCents * i.quantity, 0),
@@ -53,7 +55,7 @@ export function CheckoutPageClient({
 
   useEffect(() => {
     if (!mounted) return;
-    if (items.length === 0) {
+    if (items.length === 0 && !isSubmittedRef.current) {
       router.replace("/cart");
     }
   }, [mounted, items.length, router]);
@@ -109,6 +111,7 @@ export function CheckoutPageClient({
     } catch (e) {
       // Ignore localStorage errors
     }
+    isSubmittedRef.current = true; // Bloquear redirect de carrito vacío
     clearCart();
     window.open(result.whatsappUrl, "_blank");
     router.push(`/order/${result.orderId}`);

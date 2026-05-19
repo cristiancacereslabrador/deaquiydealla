@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { Clock, ShoppingBag, ArrowRight, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,7 @@ export function LastOrderCard() {
   const [lastOrder, setLastOrder] = useState<{ id: string; items: any[]; date: string } | null>(null);
   const [orderStatus, setOrderStatus] = useState<string | null>(null);
   const addItem = useCartStore((s) => s.addItem);
+  const router = useRouter();
 
   useEffect(() => {
     const id = localStorage.getItem("last_order_id");
@@ -55,6 +56,8 @@ export function LastOrderCard() {
     lastOrder.items.forEach(item => {
       addItem(item);
     });
+    // Llevar al carrito para que pueda revisar/añadir acompañantes
+    router.push("/cart");
   };
 
   const timeAgo = new Date(lastOrder.date).toLocaleDateString("es", {
