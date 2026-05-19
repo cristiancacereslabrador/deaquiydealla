@@ -23,6 +23,7 @@ import {
   ChefHat,
   DoorClosed,
   DoorOpen,
+  Trash2,
 } from "lucide-react";
 import { getStoreStatus, DEFAULT_DAILY_SCHEDULE, type DaySchedule } from "@/lib/store-status";
 
