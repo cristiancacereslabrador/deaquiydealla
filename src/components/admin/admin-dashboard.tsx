@@ -1202,6 +1202,42 @@ export function AdminDashboard() {
           )}
         </div>
       </section>
+
+      {/* ── Reset Orders Panel ── */}
+      <section className="bg-card border-2 border-red-500/20 rounded-xl overflow-hidden shadow-sm mt-8">
+        <div className="px-5 py-4 border-b border-red-500/10 bg-red-500/5 flex items-center gap-2 font-bold text-red-600">
+          <Trash2 className="w-5 h-5" /> 
+          Zona de Peligro: Limpiar Base de Datos
+        </div>
+        <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h4 className="font-bold text-sm">Eliminar pedidos de prueba</h4>
+            <p className="text-sm text-muted-foreground">Esta acción borrará de forma permanente TODOS los pedidos registrados hasta ahora. Úsala solo para limpiar pruebas antes de abrir al público.</p>
+          </div>
+          <button
+            onClick={async () => {
+              if (window.confirm("⚠️ ADVERTENCIA ⚠️\n\n¿Estás completamente seguro?\nEsta acción es irreversible y borrará TODOS los pedidos del sistema y de la pantalla.")) {
+                try {
+                  const { error } = await supabase.from('pedidos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                  if (error) {
+                    alert("Error al borrar pedidos (quizá faltan permisos en Supabase): " + error.message);
+                  } else {
+                    alert("✅ ¡Todos los pedidos han sido eliminados con éxito!");
+                    // Force a reload to clear any local state
+                    window.location.reload();
+                  }
+                } catch (e) {
+                  alert("Error inesperado al borrar.");
+                }
+              }
+            }}
+            className={cn(buttonVariants({ variant: "destructive" }), "shrink-0 font-bold shadow-md")}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Borrar Todos los Pedidos
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
