@@ -588,8 +588,13 @@ export function AdminDashboard() {
       const updateData: any = { status: next };
       if (minutes) updateData.estimated_minutes = minutes;
       
-      await supabase.from("pedidos").update(updateData).eq("id", order.id);
-      
+      const { data, error } = await supabase.from("pedidos").update(updateData).select().eq("id", order.id);
+      if (error) throw error;
+
+      if (Array.isArray(data) && data[0]) {
+        setOrders(prev => prev.map(o => o.id === order.id ? data[0] as Order : o));
+      }
+
       if (next === "accepted") {
         window.open(waUrl(order.customer_phone, buildAcceptedMessage(order, minutes)), "_blank");
         
@@ -610,7 +615,7 @@ export function AdminDashboard() {
     } catch (err) {
       LoggerService.error("AdminDashboard:advanceOrder", err, { orderId: order.id });
     }
-  }, [supabase]);
+  }, [supabase, isDirectPrintEnabled, printerIp, addLog]);
 
   /* ── Toggle manual status ── */
   async function updateManualStatus(status: "open" | "closed" | null) {
