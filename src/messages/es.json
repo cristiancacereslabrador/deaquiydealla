@@ -97,6 +97,7 @@
     "intro": "Revisa cantidades y el total. El pedido se confirmará en el checkout (efectivo en tienda).",
     "empty": "Tu carrito está vacío.",
     "goToMenu": "Ir al menú",
+    "add": "Añadir",
     "imageUnavailable": "Sin imagen",
     "decrease": "Reducir cantidad",
     "increase": "Aumentar cantidad",
