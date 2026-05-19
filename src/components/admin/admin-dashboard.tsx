@@ -595,7 +595,7 @@ export function AdminDashboard() {
       const updateData: any = { status: next };
       if (minutes) updateData.estimated_minutes = minutes;
       
-      const { error } = await supabase.from("pedidos").update(updateData).eq("id", order.id);
+      const { data, error } = await supabase.from("pedidos").update(updateData).select().eq("id", order.id);
       
       if (error) {
         addLog(`Error al actualizar estado del pedido: ${error.message}`, "error");
@@ -604,6 +604,9 @@ export function AdminDashboard() {
         return; // Detener flujo si la BD falla
       }
       
+      if (Array.isArray(data) && data[0]) {
+        setOrders(prev => prev.map(o => o.id === order.id ? data[0] as Order : o));
+      }
       if (next === "accepted") {
         // Imprimir ticket al aceptar
         if (isDirectPrintEnabled && printerIp) {
