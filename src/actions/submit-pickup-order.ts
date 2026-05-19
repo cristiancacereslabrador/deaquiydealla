@@ -168,6 +168,20 @@ export async function submitPickupOrderAction(
       };
     }
 
+    // Sincronizar el número de teléfono con la tabla profiles para que el trigger de fidelización
+    // funcione de forma automática y transparente (incluso si se registró por primera vez con Google)
+    try {
+      await supabase
+        .from("profiles")
+        .update({ 
+          phone: payload.phone, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq("id", user.id);
+    } catch (profileErr) {
+      LoggerService.error("submitPickupOrderAction:syncProfilePhone", profileErr, { userId: user.id });
+    }
+
     const totalStr = new Intl.NumberFormat("es", { style: "currency", currency: "EUR" }).format(computed.totalCents / 100);
     const ivaStr = new Intl.NumberFormat("es", { style: "currency", currency: "EUR" }).format((computed.totalCents * 0.10) / 100);
     const netStr = new Intl.NumberFormat("es", { style: "currency", currency: "EUR" }).format((computed.totalCents * 0.90) / 100);
