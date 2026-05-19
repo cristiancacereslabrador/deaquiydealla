@@ -584,16 +584,28 @@ export function AdminDashboard() {
     const next = statusFlow[order.status];
     if (!next) return;
 
+    // 1. Abrir WhatsApp ANTES del await para evitar que el navegador bloquee el popup
+    if (next === "accepted") {
+      window.open(waUrl(order.customer_phone, buildAcceptedMessage(order, minutes)), "_blank");
+    } else if (next === "ready") {
+      window.open(waUrl(order.customer_phone, buildReadyMessage(order)), "_blank");
+    }
+
     try {
       const updateData: any = { status: next };
       if (minutes) updateData.estimated_minutes = minutes;
       
-      await supabase.from("pedidos").update(updateData).eq("id", order.id);
+      const { error } = await supabase.from("pedidos").update(updateData).eq("id", order.id);
+      
+      if (error) {
+        addLog(`Error al actualizar estado del pedido: ${error.message}`, "error");
+        LoggerService.error("AdminDashboard:advanceOrder:Supabase", error, { orderId: order.id });
+        alert(`Error al actualizar estado: ${error.message}`);
+        return; // Detener flujo si la BD falla
+      }
       
       if (next === "accepted") {
-        window.open(waUrl(order.customer_phone, buildAcceptedMessage(order, minutes)), "_blank");
-        
-        // Print ticket when accepting the order
+        // Imprimir ticket al aceptar
         if (isDirectPrintEnabled && printerIp) {
           try {
             await sendToEpsonDirect(order, printerIp);
@@ -604,13 +616,12 @@ export function AdminDashboard() {
             addLog(`Error al imprimir pedido #${order.id.slice(0,8)}: ${err.message}`, "error");
           }
         }
-      } else if (next === "ready") {
-        window.open(waUrl(order.customer_phone, buildReadyMessage(order)), "_blank");
       }
     } catch (err) {
       LoggerService.error("AdminDashboard:advanceOrder", err, { orderId: order.id });
+      addLog(`Excepción al avanzar pedido: ${String(err)}`, "error");
     }
-  }, [supabase]);
+  }, [supabase, isDirectPrintEnabled, printerIp, addLog]);
 
   /* ── Toggle manual status ── */
   async function updateManualStatus(status: "open" | "closed" | null) {
