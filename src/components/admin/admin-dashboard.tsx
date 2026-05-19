@@ -227,7 +227,7 @@ function OrderCard({
     <div className={cn(
       "rounded-xl border-2 p-4 space-y-3 shadow-sm transition-all",
       col.bg,
-      isUrgent && "ring-2 ring-red-500 animate-pulse"
+      isUrgent && "ring-2 ring-red-500 shadow-red-500/20 shadow-lg"
     )}>
       {/* Header */}
       <div className="flex justify-between items-start gap-2">
