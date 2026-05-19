@@ -1,0 +1,1 @@
+CREATE OR REPLACE FUNCTION public.increment_loyalty_on_completion() RETURNS TRIGGER AS $$$ BEGIN IF NEW.status = 'completed' AND OLD.status != 'completed' AND NEW.customer_phone IS NOT NULL THEN UPDATE public.profiles SET loyalty_count = COALESCE(loyalty_count, 0) + 1, updated_at = NOW() WHERE phone = NEW.customer_phone; END IF; RETURN NEW; END; $$$ LANGUAGE plpgsql;
