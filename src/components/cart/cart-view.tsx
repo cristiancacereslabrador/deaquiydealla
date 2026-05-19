@@ -175,9 +175,9 @@ export function CartView({ allDishes }: { allDishes: any[] }) {
       {/* Banner de puntos de fidelidad */}
       {loyaltyCount !== null && (() => {
         // El pedido actual del carrito contará como 1 más, por eso -1
-        // Con 1 pedido hecho → este será el 2º → faltan 9 para llegar al 11º
-        const isReady = loyaltyCount >= 10;
-        const remaining = Math.max(0, 10 - loyaltyCount);
+        // Con 1 pedido hecho → este será el 2º → faltan 6 para llegar al 8º
+        const isReady = loyaltyCount >= 7;
+        const remaining = Math.max(0, 7 - loyaltyCount);
         return (
           <div className={cn(
             "rounded-2xl p-4 flex items-center gap-4 border animate-in fade-in slide-in-from-top-2",
@@ -205,9 +205,9 @@ export function CartView({ allDishes }: { allDishes: any[] }) {
                 </>
               )}
             </div>
-            {/* Mini barra de progreso: 10 casillas, cada pedido llena una */}
+            {/* Mini barra de progreso: 7 casillas, cada pedido llena una */}
             <div className="shrink-0 flex gap-0.5">
-              {Array.from({ length: 10 }).map((_, i) => (
+              {Array.from({ length: 7 }).map((_, i) => (
                 <div key={i} className={cn("w-1.5 h-6 rounded-full", i < loyaltyCount || isReady ? "bg-amber-500" : "bg-muted")} />
               ))}
             </div>

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * @description Tarjeta de fidelización para el usuario.
- * Muestra el progreso hacia el 10º pedido gratis.
+ * Muestra el progreso hacia el 7º pedido gratis.
  */
 export function LoyaltyCard() {
   const [count, setCount] = useState<number | null>(null);
@@ -40,7 +40,7 @@ export function LoyaltyCard() {
   if (loading) return null;
   if (count === null) return null;
 
-  const progress = count % 10;
+  const progress = count % 7;
   const isReady = progress === 0 && count > 0;
 
   return (
@@ -55,19 +55,19 @@ export function LoyaltyCard() {
           </div>
           <div>
             <h3 className="text-xl font-bold font-heading">Tu Fidelidad tiene premio</h3>
-            <p className="text-xs text-white/80 font-medium">¡Cada 10 pedidos, el siguiente es GRATIS!*</p>
+            <p className="text-xs text-white/80 font-medium">¡Cada 7 pedidos, el siguiente es GRATIS!*</p>
           </div>
         </div>
 
         <div className="space-y-2">
           <div className="flex justify-between text-sm font-bold">
             <span>Progreso del próximo regalo</span>
-            <span>{progress}/10</span>
+            <span>{progress}/7</span>
           </div>
           
           {/* Progress dots */}
           <div className="flex justify-between gap-1">
-            {Array.from({ length: 10 }).map((_, i) => (
+            {Array.from({ length: 7 }).map((_, i) => (
               <div 
                 key={i}
                 className={cn(
@@ -86,7 +86,7 @@ export function LoyaltyCard() {
           </div>
         ) : (
           <p className="text-[10px] italic text-white/60">
-            En el pedido #11 → 1 bebida + papas para compartir GRATIS en pedidos desde 12,99 €
+            En el pedido #8 → 1 bebida + papas para compartir GRATIS en pedidos desde 12,99 €
           </p>
         )}
       </div>
