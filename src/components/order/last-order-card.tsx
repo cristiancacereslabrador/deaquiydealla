@@ -7,14 +7,17 @@ import { Clock, ShoppingBag, ArrowRight, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { useCartStore } from "@/stores/cart-store";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 /**
  * Componente que muestra el último pedido guardado en localStorage.
  * Permite repetir el pedido o ir al seguimiento en tiempo real.
+ * Oculta el botón de seguimiento si el pedido ya fue completado.
  */
 export function LastOrderCard() {
   const t = useTranslations("Common");
   const [lastOrder, setLastOrder] = useState<{ id: string; items: any[]; date: string } | null>(null);
+  const [orderStatus, setOrderStatus] = useState<string | null>(null);
   const addItem = useCartStore((s) => s.addItem);
 
   useEffect(() => {
@@ -29,6 +32,17 @@ export function LastOrderCard() {
           items: JSON.parse(cartStr),
           date: date || new Date().toISOString(),
         });
+
+        // Consultar el estado real del pedido en Supabase
+        const supabase = createBrowserSupabaseClient();
+        supabase
+          .from("pedidos")
+          .select("status")
+          .eq("id", id)
+          .single()
+          .then(({ data }) => {
+            if (data) setOrderStatus(data.status);
+          });
       } catch (e) {
         // Data corrupta
       }
@@ -70,14 +84,16 @@ export function LastOrderCard() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2">
-        <Link 
-          href={`/order/${lastOrder.id}`}
-          className={cn(buttonVariants({ size: "sm", variant: "default" }), "flex-1 gap-2")}
-        >
-          <ShoppingBag className="w-4 h-4" />
-          Seguir Pedido
-          <ArrowRight className="w-4 h-4" />
-        </Link>
+        {orderStatus !== "completed" && (
+          <Link 
+            href={`/order/${lastOrder.id}`}
+            className={cn(buttonVariants({ size: "sm", variant: "default" }), "flex-1 gap-2")}
+          >
+            <ShoppingBag className="w-4 h-4" />
+            Seguir Pedido
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        )}
         <button
           onClick={handleRepeat}
           className={cn(buttonVariants({ size: "sm", variant: "outline" }), "flex-1 gap-2")}
