@@ -127,7 +127,7 @@
       "fallback": "Revisa los datos del formulario.",
       "err_name_min": "Indica al menos 2 caracteres.",
       "err_phone_min": "Teléfono demasiado corto.",
-      "err_phone_format": "Usa solo números, espacios y + ( ) -.",
+      "err_phone_format": "El teléfono no es válido (debe ser un número español, ej: 612 345 678).",
       "err_email_invalid": "Correo no válido.",
       "err_lines_min": "Añade al menos un plato al carrito.",
       "err_lines_max": "Demasiadas líneas en el pedido.",

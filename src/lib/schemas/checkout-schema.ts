@@ -22,9 +22,7 @@ export const checkoutCustomerSchema = z.object({
     .transform((s) => s.trim()),
   phone: z
     .string()
-    .min(8, "err_phone_min")
-    .max(24)
-    .regex(/^[\d\s+()-]+$/, "err_phone_format")
+    .regex(/^(?:(?:\+|00)34)?[\s-]*(?:[6789](?:[\s-]*\d){8})$/, "err_phone_format")
     .transform((s) => s.replace(/\s+/g, " ").trim()),
   email: z
     .union([z.string().email("err_email_invalid").max(120), z.literal("")])

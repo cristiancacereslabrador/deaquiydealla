@@ -83,7 +83,7 @@ export function LastOrderCard() {
           className={cn(buttonVariants({ size: "sm", variant: "outline" }), "flex-1 gap-2")}
         >
           <RotateCcw className="w-4 h-4" />
-          Repetir Todo
+          Repetir pedido anterior
         </button>
       </div>
     </div>
