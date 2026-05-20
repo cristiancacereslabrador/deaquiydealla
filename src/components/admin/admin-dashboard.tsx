@@ -389,6 +389,7 @@ export function AdminDashboard() {
   const [isPrinterEditing, setIsPrinterEditing] = useState(false);
   const [printerStatus, setPrinterStatus] = useState<"idle" | "checking" | "online" | "offline">("idle");
   const [isAudioBlocked, setIsAudioBlocked] = useState(false);
+  const [registeredUsersCount, setRegisteredUsersCount] = useState<number>(0);
   
   // ─── Debug Console ───
   const [debugLogs, setDebugLogs] = useState<{ time: string, msg: string, type: "error" | "info" }[]>([]);
@@ -503,8 +504,10 @@ export function AdminDashboard() {
       supabase.from("dish_status").select("*"),
       supabase.from("custom_dishes").select("*").is("deleted_at", null),
       supabase.from("dish_price_overrides").select("*"),
-    ]).then(([ordersRes, settingsRes, stockRes, customRes, overridesRes]) => {
+      supabase.from("profiles").select("id", { count: "exact", head: true }),
+    ]).then(([ordersRes, settingsRes, stockRes, customRes, overridesRes, profilesRes]) => {
       if (ordersRes.data) setOrders(ordersRes.data as Order[]);
+      if (profilesRes && profilesRes.count !== null) setRegisteredUsersCount(profilesRes.count);
       
       if (settingsRes.data) {
         const status = settingsRes.data.find(s => s.id === "store_status");
@@ -567,6 +570,12 @@ export function AdminDashboard() {
       .on("postgres_changes", { event: "*", schema: "public", table: "dish_status" }, (payload) => {
         const row = payload.new as DishStatus;
         if (row) setOutOfStock(prev => ({ ...prev, [row.dish_id]: !row.is_available }));
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "profiles" }, () => {
+        setRegisteredUsersCount(prev => prev + 1);
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "profiles" }, () => {
+        setRegisteredUsersCount(prev => prev - 1);
       })
       .subscribe((status) => {
         addLog(`Canal Pedidos: ${status.toUpperCase()}`, status === "SUBSCRIBED" ? "info" : "error");
@@ -907,7 +916,7 @@ export function AdminDashboard() {
       </div>
 
       {/* ── Stats bar ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
         <div className="bg-card border rounded-xl p-4 text-center">
           <p className="text-2xl font-bold text-primary">{pendingCount}</p>
           <p className="text-xs text-muted-foreground">Pendientes ahora</p>
@@ -923,6 +932,10 @@ export function AdminDashboard() {
         <div className="bg-card border rounded-xl p-4 text-center">
           <p className="text-xl font-bold text-primary">{formatCentsToCurrency(todayRevenue, "es")}</p>
           <p className="text-xs text-muted-foreground">Facturado hoy</p>
+        </div>
+        <div className="bg-card border rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-amber-500">{registeredUsersCount}</p>
+          <p className="text-xs text-muted-foreground">Usuarios registrados</p>
         </div>
         <button 
           onClick={() => {
