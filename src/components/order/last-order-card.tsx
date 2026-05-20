@@ -50,8 +50,12 @@ export function LastOrderCard() {
             .select("status")
             .eq("id", id)
             .single()
-            .then(({ data }) => {
-              if (data) setOrderStatus(data.status);
+            .then(({ data, error }) => {
+              if (error || !data) {
+                setOrderStatus("not_found");
+              } else {
+                setOrderStatus(data.status);
+              }
             });
         } catch (e) {
           LoggerService.error("LastOrderCard:loadLocalStorage", e);
@@ -99,7 +103,7 @@ export function LastOrderCard() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2">
-        {orderStatus !== "completed" && (
+        {orderStatus && ["pending", "accepted", "ready"].includes(orderStatus) && (
           <Link 
             href={`/order/${lastOrder.id}`}
             className={cn(buttonVariants({ size: "sm", variant: "default" }), "flex-1 gap-2")}
