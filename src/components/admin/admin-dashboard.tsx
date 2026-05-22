@@ -598,7 +598,7 @@ export function AdminDashboard() {
 
     const sw = reg.installing || reg.waiting;
     if (sw) {
-      addLog(`Service Worker en estado: ${sw.state}. Esperando activación activa...`, "info");
+      addLog(`Service Worker detectado en estado: ${sw.state}. Esperando activación activa...`, "info");
       await new Promise<void>((resolve) => {
         if (sw.state === "activated") {
           resolve();
@@ -612,23 +612,24 @@ export function AdminDashboard() {
         };
         sw.addEventListener("statechange", stateHandler);
         
-        // Timeout de seguridad de 4 segundos
-        setTimeout(resolve, 4000);
+        // Timeout de seguridad de 10 segundos para dispositivos lentos
+        setTimeout(resolve, 10000);
       });
     }
 
-    // Esperar un momento a que el navegador propague reg.active
+    // Esperar pacientemente a que Chrome propague reg.active (hasta 15 segundos)
+    addLog("Verificando propagación del Service Worker activo...", "info");
     let checks = 0;
-    while (!reg.active && checks < 15) {
-      await new Promise(r => setTimeout(r, 200));
+    while (!reg.active && checks < 50) {
+      await new Promise(r => setTimeout(r, 300));
       checks++;
     }
 
     if (!reg.active) {
-      throw new Error("El Service Worker está registrado pero no está activo en el navegador. Prueba a recargar la página.");
+      throw new Error("El Service Worker está registrado pero no está activo en el navegador. Por favor, pulsa el botón rojo 'Forzar Actualización' arriba de los logs.");
     }
 
-    addLog("Service Worker confirmado como ACTIVO.", "info");
+    addLog("Service Worker confirmado como ACTIVO en el navegador.", "info");
     return reg;
   }, [addLog]);
 
