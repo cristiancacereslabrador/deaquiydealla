@@ -481,51 +481,60 @@ export function AdminDashboard() {
 
   // Verificar si Web Push es compatible y si el usuario ya está suscrito
   useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      "serviceWorker" in navigator &&
-      "PushManager" in window
-    ) {
-      setIsPushSupported(true);
-      navigator.serviceWorker.ready
-        .then(async (registration) => {
-          try {
-            const subscription = await registration.pushManager.getSubscription();
-            setIsPushSubscribed(!!subscription);
+    if (typeof window !== "undefined") {
+      const hasSW = "serviceWorker" in navigator;
+      const hasPM = "PushManager" in window;
+      const isSecure = window.isSecureContext;
 
-            // AUTO-ACTIVACIÓN INTELIGENTE: Si el usuario ya dio permisos de notificación previamente en este dispositivo
-            // pero por alguna razón no está suscrito localmente, realizamos la suscripción de forma automática y silenciosa
-            if (!subscription && Notification.permission === "granted") {
-              const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-              if (vapidPublicKey) {
-                const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
-                const newSub = await registration.pushManager.subscribe({
-                  userVisibleOnly: true,
-                  applicationServerKey: convertedKey as any,
-                });
-                
-                await fetch("/api/admin/push/subscribe", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    subscription: newSub,
-                    action: "subscribe",
-                  }),
-                });
-                
-                setIsPushSubscribed(true);
-                addLog("Auto-activación exitosa: Avisos en segundo plano activados automáticamente (permiso previo detectado).", "info");
+      addLog(`Diagnóstico Push: ServiceWorker=${hasSW ? "SÍ" : "NO"}, PushManager=${hasPM ? "SÍ" : "NO"}, SSL Seguro=${isSecure ? "SÍ" : "NO"}`, "info");
+
+      if (hasSW && hasPM) {
+        setIsPushSupported(true);
+        navigator.serviceWorker.ready
+          .then(async (registration) => {
+            try {
+              const subscription = await registration.pushManager.getSubscription();
+              setIsPushSubscribed(!!subscription);
+
+              // AUTO-ACTIVACIÓN INTELIGENTE: Si el usuario ya dio permisos de notificación previamente en este dispositivo
+              // pero por alguna razón no está suscrito localmente, realizamos la suscripción de forma automática y silenciosa
+              if (!subscription && Notification.permission === "granted") {
+                const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+                if (vapidPublicKey) {
+                  const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
+                  const newSub = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: convertedKey as any,
+                  });
+                  
+                  await fetch("/api/admin/push/subscribe", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      subscription: newSub,
+                      action: "subscribe",
+                    }),
+                  });
+                  
+                  setIsPushSubscribed(true);
+                  addLog("Auto-activación exitosa: Avisos en segundo plano activados automáticamente (permiso previo detectado).", "info");
+                }
               }
+            } catch (err) {
+              console.error("Error al verificar o auto-suscribir la suscripción push:", err);
+              addLog(`Error al verificar suscripción push: ${err}`, "error");
             }
-          } catch (err) {
-            console.error("Error al verificar o auto-suscribir la suscripción push:", err);
-          }
-        })
-        .catch((err) => {
-          console.error("Service worker ready failed:", err);
-        });
+          })
+          .catch((err) => {
+            console.error("Service worker ready failed:", err);
+            addLog(`Fallo al esperar Service Worker: ${err}`, "error");
+          });
+      } else {
+        setIsPushSupported(false);
+        addLog("Notificaciones Web Push desactivadas por el navegador debido a falta de HTTPS/SSL, Modo Incógnito o navegador obsoleto.", "error");
+      }
     }
   }, [addLog]);
 
