@@ -12,6 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { AlertTriangle } from "lucide-react";
 
 /**
  * Checkout completo: redirige si el carrito está vacío, muestra resumen y formulario validado.
@@ -30,6 +31,8 @@ export function CheckoutPageClient({
   const clearCart = useCartStore((s) => s.clearCart);
   const [mounted, setMounted] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [pendingValues, setPendingValues] = useState<CheckoutFormValues | null>(null);
   /** Bandera para evitar que el redirect de carrito vacío compita con la nav al pedido. */
   const isSubmittedRef = useRef(false);
 
@@ -74,17 +77,32 @@ export function CheckoutPageClient({
   }
 
   /**
-   * Envía el pedido al server action y navega a la página de éxito.
+   * Procesa el envío del pedido con opción de bypass de duplicado.
    */
-  async function onSubmit(values: CheckoutFormValues) {
+  async function processOrderSubmission(values: CheckoutFormValues, bypassDuplicate = false) {
     setBanner(null);
     const result = await submitPickupOrderAction({
       ...values,
       locale: locale === "en" ? "en" : "es",
       lines: items,
+      bypassDuplicateCheck: bypassDuplicate,
     });
 
     if (!result.ok) {
+      if (result.code === "DUPLICATE_WARNING") {
+        setPendingValues(values);
+        setShowDuplicateModal(true);
+        return;
+      }
+
+      if (result.code === "DUPLICATE_LIMIT") {
+        setBanner(locale === "en"
+          ? "You have already placed two identical orders today. To prevent errors, choosing other dishes is required."
+          : "Ya has realizado dos pedidos idénticos hoy. Para evitar duplicados por error, elige otros platos o contacta con el local."
+        );
+        return;
+      }
+
       const msg =
         result.code === "VALIDATION"
           ? translateZodMessage(
@@ -115,6 +133,13 @@ export function CheckoutPageClient({
     clearCart();
     window.open(result.whatsappUrl, "_blank");
     router.push(`/order/${result.orderId}`);
+  }
+
+  /**
+   * Envía el pedido al server action y navega a la página de éxito.
+   */
+  async function onSubmit(values: CheckoutFormValues) {
+    await processOrderSubmission(values, false);
   }
 
   return (
@@ -289,6 +314,56 @@ export function CheckoutPageClient({
           </p>
         </div>
       </aside>
+
+      {/* Modal de confirmación para pedidos duplicados */}
+      {showDuplicateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border/80 bg-card p-6 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in duration-200">
+            <div className="space-y-4">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/20 text-amber-500">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div className="text-center space-y-2">
+                <h3 className="font-heading text-lg font-bold text-foreground">
+                  {locale === "en" ? "Duplicate Order?" : "¿Pedido duplicado?"}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {locale === "en" 
+                    ? "You already placed an identical order today. Are you sure you want to order the same items again?"
+                    : "Ya has realizado un pedido idéntico hoy. ¿Estás seguro de que quieres repetir este mismo pedido?"
+                  }
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDuplicateModal(false);
+                    setPendingValues(null);
+                  }}
+                  className={cn(buttonVariants({ variant: "outline" }), "w-full justify-center sm:w-auto")}
+                >
+                  {locale === "en" ? "Review Cart" : "Revisar Carrito"}
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const vals = pendingValues;
+                    setShowDuplicateModal(false);
+                    setPendingValues(null);
+                    if (vals) {
+                      await processOrderSubmission(vals, true);
+                    }
+                  }}
+                  className={cn(buttonVariants({ variant: "default" }), "w-full justify-center sm:w-auto bg-amber-500 hover:bg-amber-600 text-white")}
+                >
+                  {locale === "en" ? "Yes, order again" : "Sí, pedir de nuevo"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

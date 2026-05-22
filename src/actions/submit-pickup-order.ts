@@ -15,7 +15,7 @@ export type SubmitOrderResult =
   | { ok: true; orderId: string; whatsappUrl: string }
   | {
       ok: false;
-      code: "VALIDATION" | "UNKNOWN_DISH" | "DATABASE" | "CONFIG" | "STORE_PAUSED" | "UNAUTHORIZED";
+      code: "VALIDATION" | "UNKNOWN_DISH" | "DATABASE" | "CONFIG" | "STORE_PAUSED" | "UNAUTHORIZED" | "DUPLICATE_WARNING" | "DUPLICATE_LIMIT";
       message: string;
     };
 
@@ -127,6 +127,55 @@ export async function submitPickupOrderAction(
             ok: false,
             code: "UNKNOWN_DISH",
             message: `out_of_stock:${outOfStockIds.join(",")}`,
+          };
+        }
+      }
+    }
+
+    // ─── 2.2 Verificar duplicidad de pedidos para hoy ──────────────────────────────────
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const { data: todayOrders, error: duplicateErr } = await supabase
+      .from("pedidos")
+      .select("id, lines")
+      .eq("customer_email", user.email)
+      .gte("created_at", startOfToday.toISOString());
+
+    if (duplicateErr) {
+      LoggerService.error("submitPickupOrderAction:checkDuplicate", duplicateErr);
+    } else if (todayOrders && todayOrders.length > 0) {
+      const areLinesIdentical = (linesA: any[], linesB: any[]) => {
+        if (linesA.length !== linesB.length) return false;
+        
+        const sortedA = [...linesA]
+          .map(l => ({ dishId: l.dishId, quantity: l.quantity }))
+          .sort((x, y) => x.dishId.localeCompare(y.dishId));
+        const sortedB = [...linesB]
+          .map(l => ({ dishId: l.dishId, quantity: l.quantity }))
+          .sort((x, y) => x.dishId.localeCompare(y.dishId));
+          
+        return sortedA.every((val, index) => 
+          val.dishId === sortedB[index].dishId && val.quantity === sortedB[index].quantity
+        );
+      };
+
+      const identicalOrdersCount = todayOrders.filter(o => 
+        areLinesIdentical(o.lines, computed.normalizedLines)
+      ).length;
+
+      if (identicalOrdersCount > 0) {
+        if (identicalOrdersCount >= 2) {
+          return {
+            ok: false,
+            code: "DUPLICATE_LIMIT",
+            message: "duplicate_limit_reached",
+          };
+        } else if (!payload.bypassDuplicateCheck) {
+          return {
+            ok: false,
+            code: "DUPLICATE_WARNING",
+            message: "warning_duplicate_order",
           };
         }
       }

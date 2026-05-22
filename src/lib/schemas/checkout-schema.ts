@@ -50,6 +50,7 @@ export const submitOrderPayloadSchema = checkoutCustomerSchema
   .extend({
     locale: z.enum(["es", "en"]),
     lines: z.array(cartLineSchema).min(1, "err_lines_min").max(50, "err_lines_max"),
+    bypassDuplicateCheck: z.boolean().optional().default(false),
   })
   .superRefine((data, ctx) => {
     if (data.company.length > 0) {
