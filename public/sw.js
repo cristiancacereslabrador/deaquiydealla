@@ -3,9 +3,8 @@
  * Satisfies PWA installability requirements.
  */
 
-const CACHE_NAME = 'deaquiydealla-v4';
+const CACHE_NAME = 'deaquiydealla-v5';
 const ASSETS_TO_CACHE = [
-  '/',
   '/images/logo.png',
   '/notification.mp3',
 ];
@@ -13,7 +12,19 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      // Registrar cada recurso de forma individual para evitar que un redirect de Next.js o lentitud bloquee la instalación
+      const cachePromises = ASSETS_TO_CACHE.map((url) => {
+        return fetch(url)
+          .then((response) => {
+            if (response && response.status === 200) {
+              return cache.put(url, response);
+            }
+          })
+          .catch((err) => {
+            console.warn(`[SW] Fallo no-bloqueante al cachear asset ${url}:`, err);
+          });
+      });
+      return Promise.all(cachePromises);
     })
   );
   self.skipWaiting();
