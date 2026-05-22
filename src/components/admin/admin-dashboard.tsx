@@ -439,6 +439,42 @@ export function AdminDashboard() {
     setDebugLogs(prev => [{ time: new Date().toLocaleTimeString(), msg, type }, ...prev].slice(0, 20));
   }, []);
 
+  const handleForceUpdate = useCallback(async () => {
+    addLog("Iniciando purga completa de caché y Service Workers...", "info");
+    try {
+      if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        if (registrations.length === 0) {
+          addLog("No se encontraron Service Workers registrados.", "info");
+        }
+        for (const reg of registrations) {
+          await reg.unregister();
+          addLog(`Service Worker desregistrado: ${reg.scope}`, "info");
+        }
+      }
+      
+      if (typeof window !== "undefined" && "caches" in window) {
+        const cacheKeys = await caches.keys();
+        if (cacheKeys.length === 0) {
+          addLog("No se encontraron bases de datos en caché.", "info");
+        }
+        for (const key of cacheKeys) {
+          await caches.delete(key);
+          addLog(`Cache Storage eliminada: ${key}`, "info");
+        }
+      }
+
+      addLog("¡Purga completada con éxito! Recargando aplicación...", "info");
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (err: any) {
+      console.error("Error al purgar caché local:", err);
+      addLog(`Error al purgar caché: ${err.message || err}`, "error");
+    }
+  }, [addLog]);
+
 
   // Sintetizador acústico agradable (ding-dong digital) para notificaciones infalibles sin red
   const playSynthesizedChime = useCallback(() => {
@@ -1381,7 +1417,17 @@ export function AdminDashboard() {
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
               Consola de Depuración (Logs)
             </h4>
-            <button onClick={() => setDebugLogs([])} className="text-[9px] text-primary hover:underline">Limpiar Logs</button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleForceUpdate} 
+                className="text-[9px] text-red-500 hover:text-red-600 font-bold hover:underline flex items-center gap-0.5"
+                title="Elimina el Service Worker y toda la caché guardada en el dispositivo para cargar la versión más reciente en caliente."
+              >
+                🔄 Forzar Actualización
+              </button>
+              <span className="text-[9px] text-muted-foreground/30">|</span>
+              <button onClick={() => setDebugLogs([])} className="text-[9px] text-primary hover:underline">Limpiar Logs</button>
+            </div>
           </div>
           <div className="bg-slate-950 rounded-xl p-3 font-mono text-[10px] space-y-1.5 max-h-40 overflow-y-auto shadow-inner border border-white/5">
             {debugLogs.length === 0 ? (

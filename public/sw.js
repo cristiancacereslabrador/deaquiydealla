@@ -3,7 +3,7 @@
  * Satisfies PWA installability requirements.
  */
 
-const CACHE_NAME = 'deaquiydealla-v2';
+const CACHE_NAME = 'deaquiydealla-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/images/logo.png',
@@ -35,9 +35,64 @@ self.addEventListener('fetch', (event) => {
   // Solo interceptar peticiones GET
   if (event.request.method !== 'GET') return;
 
+  const url = new URL(event.request.url);
+
+  // Omitir por completo peticiones a la API, Supabase o telemetría para evitar respuestas cacheadas
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.hostname.includes('supabase.co') ||
+    url.hostname.includes('vercel')
+  ) {
+    return;
+  }
+
+  // ESTRATEGIA: Network-First para páginas HTML y navegaciones (siempre ver en vivo, con fallback offline)
+  if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // ESTRATEGIA: Cache-First con Network Fallback para otros recursos estáticos
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        // En segundo plano revalidamos los recursos dinámicos de Next.js (JS, CSS) para futuras visitas
+        if (url.pathname.includes('_next/') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+          fetch(event.request)
+            .then((networkResponse) => {
+              if (networkResponse && networkResponse.status === 200) {
+                caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
+              }
+            })
+            .catch(() => {/* Silenciar errores de red en revalidación background */});
+        }
+        return cachedResponse;
+      }
+
+      return fetch(event.request).then((networkResponse) => {
+        if (!networkResponse || networkResponse.status !== 200) {
+          return networkResponse;
+        }
+        const responseToCache = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseToCache);
+        });
+        return networkResponse;
+      });
     })
   );
 });
