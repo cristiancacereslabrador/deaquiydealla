@@ -507,15 +507,14 @@ export function AdminDashboard() {
 
     // 1. Intentar obtener registro existente
     let reg = await navigator.serviceWorker.getRegistration();
-    if (reg && reg.active) {
-      return reg;
-    }
-
-    // 2. Si no hay registro o no está activo, intentar registrar activamente
-    try {
-      reg = await navigator.serviceWorker.register("/sw.js");
-    } catch (err: any) {
-      console.warn("Fallo al registrar SW de forma activa:", err);
+    
+    // 2. Si no hay registro, intentar registrar activamente
+    if (!reg) {
+      try {
+        reg = await navigator.serviceWorker.register("/sw.js");
+      } catch (err: any) {
+        console.warn("Fallo al registrar SW de forma activa:", err);
+      }
     }
 
     // 3. Esperar que esté listo con timeout de 5 segundos
@@ -540,6 +539,48 @@ export function AdminDashboard() {
     });
   }, []);
 
+  // Helper to ensure the Service Worker is fully active before any Push operation
+  const ensureActiveSW = useCallback(async (reg: ServiceWorkerRegistration): Promise<ServiceWorkerRegistration> => {
+    if (reg.active) {
+      return reg;
+    }
+
+    const sw = reg.installing || reg.waiting;
+    if (sw) {
+      addLog(`Service Worker en estado: ${sw.state}. Esperando activación activa...`, "info");
+      await new Promise<void>((resolve) => {
+        if (sw.state === "activated") {
+          resolve();
+          return;
+        }
+        const stateHandler = () => {
+          if (sw.state === "activated") {
+            sw.removeEventListener("statechange", stateHandler);
+            resolve();
+          }
+        };
+        sw.addEventListener("statechange", stateHandler);
+        
+        // Timeout de seguridad de 4 segundos
+        setTimeout(resolve, 4000);
+      });
+    }
+
+    // Esperar un momento a que el navegador propague reg.active
+    let checks = 0;
+    while (!reg.active && checks < 15) {
+      await new Promise(r => setTimeout(r, 200));
+      checks++;
+    }
+
+    if (!reg.active) {
+      throw new Error("El Service Worker está registrado pero no está activo en el navegador. Prueba a recargar la página.");
+    }
+
+    addLog("Service Worker confirmado como ACTIVO.", "info");
+    return reg;
+  }, [addLog]);
+
   // Verificar si Web Push es compatible y si el usuario ya está suscrito
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -559,7 +600,10 @@ export function AdminDashboard() {
         getSWRegistration()
           .then(async (registration) => {
             try {
-              const subscription = await registration.pushManager.getSubscription();
+              // Asegurar que esté activo antes de verificar suscripción
+              const activeReg = await ensureActiveSW(registration);
+              
+              const subscription = await activeReg.pushManager.getSubscription();
               setIsPushSubscribed(!!subscription);
 
               // AUTO-ACTIVACIÓN INTELIGENTE: Si el usuario ya dio permisos de notificación previamente en este dispositivo
@@ -567,7 +611,7 @@ export function AdminDashboard() {
               if (!subscription && Notification.permission === "granted") {
                 if (vapidPublicKey) {
                   const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
-                  const newSub = await registration.pushManager.subscribe({
+                  const newSub = await activeReg.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: convertedKey as any,
                   });
@@ -588,9 +632,9 @@ export function AdminDashboard() {
                   addLog("Auto-activación exitosa: Avisos en segundo plano activados automáticamente (permiso previo detectado).", "info");
                 }
               }
-            } catch (err) {
+            } catch (err: any) {
               console.error("Error al verificar o auto-suscribir la suscripción push:", err);
-              addLog(`Error al verificar suscripción push: ${err}`, "error");
+              addLog(`Error al verificar suscripción push: ${err.message || err}`, "error");
             }
           })
           .catch((err) => {
@@ -602,7 +646,7 @@ export function AdminDashboard() {
         addLog("Notificaciones Web Push desactivadas por el navegador debido a falta de HTTPS/SSL, Modo Incógnito o navegador obsoleto.", "error");
       }
     }
-  }, [addLog, getSWRegistration]);
+  }, [addLog, getSWRegistration, ensureActiveSW]);
 
   // Manejar activación / desactivación de notificaciones push en segundo plano
   const handleTogglePush = async () => {
@@ -613,12 +657,15 @@ export function AdminDashboard() {
     try {
       addLog("Esperando conexión con el Service Worker...", "info");
       const registration = await getSWRegistration();
-      addLog("Service Worker conectado. Verificando estado...", "info");
+      
+      addLog("Asegurando activación completa del Service Worker...", "info");
+      const activeReg = await ensureActiveSW(registration);
+      addLog("Service Worker confirmado como ACTIVO. Verificando estado...", "info");
 
       if (isPushSubscribed) {
         addLog("Cancelando suscripción de avisos...", "info");
         // Desuscribirse
-        const subscription = await registration.pushManager.getSubscription();
+        const subscription = await activeReg.pushManager.getSubscription();
         if (subscription) {
           await subscription.unsubscribe();
           
@@ -667,7 +714,7 @@ export function AdminDashboard() {
 
         addLog("Generando canal seguro Web Push...", "info");
         const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
-        const subscription = await registration.pushManager.subscribe({
+        const subscription = await activeReg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: convertedKey as any,
         });
