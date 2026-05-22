@@ -168,6 +168,24 @@ export async function submitPickupOrderAction(
       };
     }
 
+    // ─── 2.5 Enviar notificación Push en segundo plano a los administradores ───
+    try {
+      const { sendNewOrderNotification } = await import("@/lib/push-notifications");
+      await sendNewOrderNotification({
+        id: data.id,
+        customer_name: row.customer_name,
+        total_cents: row.total_cents,
+        lines: row.lines.map((l: any) => ({
+          quantity: l.quantity,
+          nameEs: l.nameEs,
+          nameEn: l.nameEn,
+          dishId: l.dishId,
+        })),
+      });
+    } catch (pushErr) {
+      LoggerService.error("submitPickupOrderAction:pushNotification", pushErr, { orderId: data.id });
+    }
+
     // Sincronizar el número de teléfono con la tabla profiles para que el trigger de fidelización
     // funcione de forma automática y transparente (incluso si se registró por primera vez con Google)
     try {

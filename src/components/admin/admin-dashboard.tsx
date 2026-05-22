@@ -367,6 +367,22 @@ function OrderCard({
   );
 }
 
+/**
+ * @description Convierte una clave VAPID pública en formato Base64 a un array de bytes Uint8Array.
+ * @param {string} base64String - Clave VAPID pública.
+ * @returns {Uint8Array} - Array de bytes procesado.
+ */
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 /* ─── Main Dashboard ──────────────────────────────────────────────────── */
 
 /**
@@ -391,6 +407,11 @@ export function AdminDashboard() {
   const [isAudioBlocked, setIsAudioBlocked] = useState(false);
   const [registeredUsersCount, setRegisteredUsersCount] = useState<number>(0);
   const [reconnectTrigger, setReconnectTrigger] = useState<number>(0);
+  
+  // Web Push States
+  const [isPushSubscribed, setIsPushSubscribed] = useState(false);
+  const [isPushSupported, setIsPushSupported] = useState(false);
+  const [isPushLoading, setIsPushLoading] = useState(false);
   
   // ─── Debug Console ───
   const [debugLogs, setDebugLogs] = useState<{ time: string, msg: string, type: "error" | "info" }[]>([]);
@@ -457,6 +478,139 @@ export function AdminDashboard() {
     // Según requerimiento: "El interruptor de encendido de impresion se debe activar solo cuando se abra la app"
     setIsDirectPrintEnabled(true);
   }, []);
+
+  // Verificar si Web Push es compatible y si el usuario ya está suscrito
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      "serviceWorker" in navigator &&
+      "PushManager" in window
+    ) {
+      setIsPushSupported(true);
+      navigator.serviceWorker.ready
+        .then(async (registration) => {
+          try {
+            const subscription = await registration.pushManager.getSubscription();
+            setIsPushSubscribed(!!subscription);
+
+            // AUTO-ACTIVACIÓN INTELIGENTE: Si el usuario ya dio permisos de notificación previamente en este dispositivo
+            // pero por alguna razón no está suscrito localmente, realizamos la suscripción de forma automática y silenciosa
+            if (!subscription && Notification.permission === "granted") {
+              const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+              if (vapidPublicKey) {
+                const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
+                const newSub = await registration.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: convertedKey as any,
+                });
+                
+                await fetch("/api/admin/push/subscribe", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    subscription: newSub,
+                    action: "subscribe",
+                  }),
+                });
+                
+                setIsPushSubscribed(true);
+                addLog("Auto-activación exitosa: Avisos en segundo plano activados automáticamente (permiso previo detectado).", "info");
+              }
+            }
+          } catch (err) {
+            console.error("Error al verificar o auto-suscribir la suscripción push:", err);
+          }
+        })
+        .catch((err) => {
+          console.error("Service worker ready failed:", err);
+        });
+    }
+  }, [addLog]);
+
+  // Manejar activación / desactivación de notificaciones push en segundo plano
+  const handleTogglePush = async () => {
+    if (!isPushSupported || isPushLoading) return;
+    setIsPushLoading(true);
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+
+      if (isPushSubscribed) {
+        // Desuscribirse
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          await subscription.unsubscribe();
+          
+          // Eliminar del backend
+          const response = await fetch("/api/admin/push/subscribe", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              subscription,
+              action: "unsubscribe",
+            }),
+          });
+
+          if (!response.ok) {
+            console.warn("No se pudo remover la suscripción en el servidor, pero se desactivó localmente.");
+          }
+
+          setIsPushSubscribed(false);
+          addLog("Avisos en segundo plano DESACTIVADOS.", "info");
+        }
+      } else {
+        // Solicitar permisos de notificación nativa
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          addLog("Permiso de notificación DENEGADO por el usuario.", "error");
+          setIsPushLoading(false);
+          return;
+        }
+
+        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapidPublicKey) {
+          addLog("Error: NEXT_PUBLIC_VAPID_PUBLIC_KEY no configurada.", "error");
+          setIsPushLoading(false);
+          return;
+        }
+
+        const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedKey as any,
+        });
+
+        // Registrar en el backend
+        const response = await fetch("/api/admin/push/subscribe", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            subscription,
+            action: "subscribe",
+          }),
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.error || "Error al registrar la suscripción en la base de datos.");
+        }
+
+        setIsPushSubscribed(true);
+        addLog("¡Avisos en segundo plano (tipo WhatsApp) ACTIVADOS!", "info");
+      }
+    } catch (err: any) {
+      LoggerService.error("handleTogglePush", err);
+      addLog(`Error al configurar push: ${err.message || err}`, "error");
+    } finally {
+      setIsPushLoading(false);
+    }
+  };
 
   // Prevenir que la pantalla de la tablet de cocina entre en suspensión por inactividad (Wake Lock API)
   useEffect(() => {
@@ -1023,6 +1177,64 @@ export function AdminDashboard() {
         {!isDirectPrintEnabled && (
           <p className="text-xs text-muted-foreground italic border-t border-border/50 pt-3">
             El interruptor de impresión está <strong>APAGADO</strong>. No se realizarán intentos de conexión ni impresiones automáticas hasta que se active manualmente o se reinicie la app.
+          </p>
+        )}
+      </div>
+
+      {/* ── Web Push Background Notifications (WhatsApp-Style) ── */}
+      <div className="bg-card border rounded-2xl p-5 space-y-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-sm shrink-0",
+              isPushSubscribed ? "bg-green-100 text-green-600 dark:bg-green-950/40" : "bg-muted text-muted-foreground"
+            )}>
+              <Volume2 className="w-6 h-6 animate-bounce" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg leading-tight">Avisos en Segundo Plano (Tipo WhatsApp)</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Recibe alertas sonoras instantáneas y notificaciones al recibir pedidos nuevos, incluso con la pantalla de la tablet apagada o bloqueada.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 border-t sm:border-t-0 pt-4 sm:pt-0 shrink-0">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Estado:</span>
+              <button
+                disabled={!isPushSupported || isPushLoading}
+                onClick={handleTogglePush}
+                className={cn(
+                  "relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed",
+                  isPushSubscribed ? "bg-blue-600" : "bg-muted"
+                )}
+              >
+                <span className={cn(
+                  "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out",
+                  isPushSubscribed ? "translate-x-5" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {!isPushSupported && (
+          <p className="text-xs text-red-500 font-medium border-t border-border/50 pt-3">
+            ⚠️ Tu navegador o dispositivo no soporta Notificaciones Web Push. Debes usar un navegador moderno como Google Chrome en Android o Microsoft Edge en Windows, y asegurarte de tener instalada la PWA.
+          </p>
+        )}
+        
+        {isPushSupported && !isPushSubscribed && (
+          <p className="text-xs text-muted-foreground italic border-t border-border/50 pt-3">
+            El sistema de avisos nativos está <strong>DESACTIVADO</strong>. Actívalo para que el dispositivo suene de inmediato ante nuevos pedidos sin necesidad de mantener la pantalla encendida.
+          </p>
+        )}
+
+        {isPushSupported && isPushSubscribed && (
+          <p className="text-xs text-green-600 dark:text-green-400 font-medium border-t border-border/50 pt-3 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            ¡Avisos en segundo plano ACTIVOS! La tablet pitará de inmediato al recibir cualquier pedido nuevo.
           </p>
         )}
       </div>
