@@ -84,8 +84,10 @@ export async function sendNewOrderNotification(order: PushOrderData): Promise<vo
       tag: "nuevo-pedido", // Agrupa notificaciones
       icon: "/images/logo.png",
       badge: "/images/logo.png",
-      // Patrón de vibración: pitar/vibrar dos veces fuerte
-      vibrate: [200, 100, 200, 100, 400],
+      // Patrón de vibración prolongado
+      vibrate: [300, 100, 300, 100, 300, 100, 400],
+      silent: false,
+      sound: "/notification.mp3",
       data: {
         url: `/admin`,
       },

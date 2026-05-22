@@ -26,6 +26,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { getStoreStatus, DEFAULT_DAILY_SCHEDULE, type DaySchedule } from "@/lib/store-status";
+import { deleteOrderAction } from "@/actions/delete-order";
 
 /* ─── Types ────────────────────────────────────────────────────────────── */
 
@@ -199,13 +200,15 @@ function OrderCard({
   onAdvance,
   printerIp,
   isDirectPrintEnabled,
-  onPrintManual
+  onPrintManual,
+  onDelete
 }: { 
   order: Order; 
   onAdvance: (order: Order, minutes?: number) => Promise<void>;
   printerIp: string;
   isDirectPrintEnabled: boolean;
   onPrintManual: (order: Order) => void;
+  onDelete: (order: Order) => void;
 }) {
   const [isPrinting, setIsPrinting] = useState(false);
   const [customMinutes, setCustomMinutes] = useState(15);
@@ -314,6 +317,18 @@ function OrderCard({
           >
             <Printer className={cn("w-4 h-4", isPrinting && "animate-spin")} />
           </button>
+
+          {/* Botón de eliminar (basurero rojo) */}
+          <button
+            onClick={() => onDelete(order)}
+            className={cn(
+              buttonVariants({ size: "sm", variant: "destructive" }),
+              "px-3 shrink-0 bg-red-600 hover:bg-red-700 text-white"
+            )}
+            title="Eliminar pedido permanentemente"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Advance status button */}
@@ -405,6 +420,8 @@ export function AdminDashboard() {
   const [isPrinterEditing, setIsPrinterEditing] = useState(false);
   const [printerStatus, setPrinterStatus] = useState<"idle" | "checking" | "online" | "offline">("idle");
   const [isAudioBlocked, setIsAudioBlocked] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [registeredUsersCount, setRegisteredUsersCount] = useState<number>(0);
   const [reconnectTrigger, setReconnectTrigger] = useState<number>(0);
   
@@ -812,6 +829,11 @@ export function AdminDashboard() {
           playNotificationSound();
         } else if (payload.eventType === "UPDATE") {
           setOrders(prev => prev.map(o => o.id === payload.new.id ? payload.new as Order : o));
+        } else if (payload.eventType === "DELETE") {
+          const oldId = payload.old.id;
+          console.log("REALTIME DELETE:", oldId);
+          setOrders(prev => prev.filter(o => o.id !== oldId));
+          addLog(`Pedido #${oldId.slice(0, 8)} eliminado en tiempo real.`);
         }
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "store_settings" }, (payload) => {
@@ -910,6 +932,27 @@ export function AdminDashboard() {
       addLog(`Excepción al avanzar pedido: ${String(err)}`, "error");
     }
   }, [supabase, isDirectPrintEnabled, printerIp, addLog]);
+
+  /* ── Delete Order ── */
+  const handleDeleteOrder = async (orderId: string) => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    try {
+      const result = await deleteOrderAction(orderId);
+      if (result.ok) {
+        setOrders(prev => prev.filter(o => o.id !== orderId));
+        setOrderToDelete(null);
+        addLog(`Pedido #${orderId.slice(0, 8)} eliminado exitosamente.`);
+      } else {
+        alert(`Error al eliminar el pedido: ${result.message}`);
+      }
+    } catch (err: any) {
+      console.error("Error al eliminar pedido:", err);
+      alert(`Error inesperado al eliminar el pedido: ${err.message || err}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   /* ── Toggle manual status ── */
   async function updateManualStatus(status: "open" | "closed" | null) {
@@ -1466,6 +1509,7 @@ export function AdminDashboard() {
                         setOrderToPrint(o);
                         setTimeout(() => window.print(), 100);
                       }}
+                      onDelete={(o) => setOrderToDelete(o)}
                     />
                   ))
                 )}
@@ -1585,6 +1629,72 @@ export function AdminDashboard() {
           </button>
         </div>
       </section>
+
+      {/* ── Modal de Confirmación de Eliminación (Trash Bin Dialog) ── */}
+      {orderToDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-card border-2 border-destructive/20 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-6 animate-scale-in text-card-foreground">
+            <div className="flex items-center gap-4 text-destructive">
+              <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg leading-tight">¿Eliminar este pedido?</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Esta acción no se puede deshacer de ninguna forma.</p>
+              </div>
+            </div>
+
+            <div className="bg-muted/40 border rounded-xl p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="font-medium text-muted-foreground">Pedido ID:</span>
+                <span className="font-mono font-bold">#{orderToDelete.id.slice(0, 8)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium text-muted-foreground">Cliente:</span>
+                <span className="font-bold">{orderToDelete.customer_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium text-muted-foreground">Total:</span>
+                <span className="font-bold text-primary">{formatCentsToCurrency(orderToDelete.total_cents, "es")}</span>
+              </div>
+              <div className="border-t border-border/40 pt-2 mt-2">
+                <span className="font-medium block mb-1">Detalle del pedido:</span>
+                <ul className="space-y-0.5 text-xs text-muted-foreground">
+                  {orderToDelete.lines.map((l, i) => (
+                    <li key={i}>
+                      {l.quantity}x {l.nameEs ?? l.nameEn ?? l.dishId}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                disabled={isDeleting}
+                onClick={() => setOrderToDelete(null)}
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "flex-1 text-xs font-bold py-2.5"
+                )}
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={isDeleting}
+                onClick={() => handleDeleteOrder(orderToDelete.id)}
+                className={cn(
+                  buttonVariants({ variant: "destructive" }),
+                  "flex-1 text-xs font-bold py-2.5 bg-red-600 hover:bg-red-700 text-white flex items-center justify-center gap-2",
+                  isDeleting && "opacity-70 animate-pulse"
+                )}
+              >
+                {isDeleting ? "Eliminando..." : "Sí, eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

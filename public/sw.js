@@ -3,10 +3,11 @@
  * Satisfies PWA installability requirements.
  */
 
-const CACHE_NAME = 'deaquiydealla-v1';
+const CACHE_NAME = 'deaquiydealla-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/images/logo.png',
+  '/notification.mp3',
 ];
 
 self.addEventListener('install', (event) => {
@@ -53,9 +54,11 @@ self.addEventListener('push', (event) => {
       body: data.body,
       icon: data.icon || '/images/logo.png',
       badge: data.badge || '/images/logo.png',
-      vibrate: data.vibrate || [200, 100, 200, 100, 400],
+      vibrate: data.vibrate || [300, 100, 300, 100, 300, 100, 400],
       tag: data.tag || 'nuevo-pedido',
       renotify: true,
+      silent: false,
+      sound: '/notification.mp3',
       data: data.data || { url: '/admin' }
     };
 
@@ -70,7 +73,9 @@ self.addEventListener('push', (event) => {
         body: text,
         icon: '/images/logo.png',
         badge: '/images/logo.png',
-        vibrate: [200, 100, 200, 100, 400],
+        vibrate: [300, 100, 300, 100, 300, 100, 400],
+        silent: false,
+        sound: '/notification.mp3',
         data: { url: '/admin' }
       })
     );
