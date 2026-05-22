@@ -24,6 +24,8 @@ import {
   DoorClosed,
   DoorOpen,
   Trash2,
+  BellRing,
+  Bell,
 } from "lucide-react";
 import { getStoreStatus, DEFAULT_DAILY_SCHEDULE, type DaySchedule } from "@/lib/store-status";
 import { deleteOrderAction } from "@/actions/delete-order";
@@ -429,6 +431,7 @@ export function AdminDashboard() {
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);
   const [isPushSupported, setIsPushSupported] = useState(false);
   const [isPushLoading, setIsPushLoading] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<"default" | "granted" | "denied">("default");
   
   // ─── Debug Console ───
   const [debugLogs, setDebugLogs] = useState<{ time: string, msg: string, type: "error" | "info" }[]>([]);
@@ -475,7 +478,7 @@ export function AdminDashboard() {
   // Función para reproducir sonido con reintento si está bloqueado y sintetizador de respaldo
   const playNotificationSound = useCallback(async () => {
     try {
-      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+      const audio = new Audio("/notification.mp3");
       await audio.play();
       setIsAudioBlocked(false);
     } catch (err) {
@@ -507,6 +510,9 @@ export function AdminDashboard() {
 
       if (hasSW && hasPM) {
         setIsPushSupported(true);
+        if ("Notification" in window) {
+          setNotificationPermission(Notification.permission as any);
+        }
         navigator.serviceWorker.ready
           .then(async (registration) => {
             try {
@@ -536,6 +542,7 @@ export function AdminDashboard() {
                   });
                   
                   setIsPushSubscribed(true);
+                  setNotificationPermission("granted");
                   addLog("Auto-activación exitosa: Avisos en segundo plano activados automáticamente (permiso previo detectado).", "info");
                 }
               }
@@ -586,11 +593,17 @@ export function AdminDashboard() {
           }
 
           setIsPushSubscribed(false);
+          if (typeof window !== "undefined" && "Notification" in window) {
+            setNotificationPermission(Notification.permission as any);
+          }
           addLog("Avisos en segundo plano DESACTIVADOS.", "info");
         }
       } else {
         // Solicitar permisos de notificación nativa
         const permission = await Notification.requestPermission();
+        if (typeof window !== "undefined" && "Notification" in window) {
+          setNotificationPermission(Notification.permission as any);
+        }
         if (permission !== "granted") {
           addLog("Permiso de notificación DENEGADO por el usuario.", "error");
           setIsPushLoading(false);
@@ -628,9 +641,15 @@ export function AdminDashboard() {
         }
 
         setIsPushSubscribed(true);
+        if (typeof window !== "undefined" && "Notification" in window) {
+          setNotificationPermission(Notification.permission as any);
+        }
         addLog("¡Avisos en segundo plano (tipo WhatsApp) ACTIVADOS!", "info");
       }
     } catch (err: any) {
+      if (typeof window !== "undefined" && "Notification" in window) {
+        setNotificationPermission(Notification.permission as any);
+      }
       LoggerService.error("handleTogglePush", err);
       addLog(`Error al configurar push: ${err.message || err}`, "error");
     } finally {
@@ -1034,6 +1053,62 @@ export function AdminDashboard() {
         </div>
       )}
 
+      {/* ── Banner de Activación Proactiva de Alertas en Segundo Plano ── */}
+      {typeof window !== "undefined" && notificationPermission === "default" && (
+        <div className="bg-gradient-to-r from-orange-500 to-red-600 text-white p-5 rounded-2xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-pulse mt-2 border border-orange-400">
+          <div className="flex gap-3">
+            <div className="bg-white/20 p-2.5 rounded-xl shrink-0 flex items-center justify-center">
+              <BellRing className="w-6 h-6 text-white animate-bounce" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base leading-snug">🚨 ¡ALERTA DE NUEVOS PEDIDOS DESACTIVADA! (ACCIÓN NECESARIA)</h3>
+              <p className="text-xs text-white/90 mt-1 max-w-xl">
+                Para que esta tablet pite e informe de nuevos pedidos de inmediato, <strong>incluso con la pantalla apagada o bloqueada</strong>, debes activar las notificaciones nativas en segundo plano.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={async () => {
+              await handleTogglePush();
+              if (typeof window !== "undefined" && "Notification" in window) {
+                setNotificationPermission(Notification.permission as any);
+              }
+            }}
+            className="bg-white hover:bg-white/90 text-red-600 font-bold px-5 py-2.5 rounded-xl text-xs shadow-lg transition-transform hover:scale-105 shrink-0 w-full md:w-auto text-center animate-none"
+          >
+            🔔 Activar Avisos de Cocina
+          </button>
+        </div>
+      )}
+
+      {/* ── Alerta de Permisos Denegados ── */}
+      {typeof window !== "undefined" && notificationPermission === "denied" && (
+        <div className="bg-amber-600 text-white p-5 rounded-2xl shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mt-2 border border-amber-500">
+          <div className="flex gap-3">
+            <div className="bg-white/20 p-2.5 rounded-xl shrink-0 flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base leading-snug">⚠️ LAS ALERTAS ESTÁN BLOQUEADAS EN TU DISPOSITIVO</h3>
+              <p className="text-xs text-white/90 mt-1 max-w-xl">
+                Has desactivado o bloqueado los permisos de notificación. Para habilitar los sonidos en segundo plano, ve a los <strong>Ajustes de tu tablet Android &gt; Aplicaciones &gt; De Aquí y De Allá &gt; Notificaciones</strong>, actívalas y permite el <strong>Sonido</strong>.
+              </p>
+            </div>
+          </div>
+          <a
+            href="#pwa-guide-section"
+            onClick={(e) => {
+              e.preventDefault();
+              const el = document.getElementById("pwa-guide-section");
+              el?.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="bg-white/20 hover:bg-white/30 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors shrink-0 w-full md:w-auto text-center border border-white/30"
+          >
+            Ver Guía de Ajustes Android ⚙️
+          </a>
+        </div>
+      )}
+
       {/* ── Hidden Printable Ticket (CSS handles visibility) ── */}
       {orderToPrint && (
         <div id="printable-ticket" className="hidden print:block fixed inset-0 z-[999] bg-white text-black p-0 font-mono text-[13px] w-[80mm]">
@@ -1289,6 +1364,42 @@ export function AdminDashboard() {
             ¡Avisos en segundo plano ACTIVOS! La tablet pitará de inmediato al recibir cualquier pedido nuevo.
           </p>
         )}
+
+        {/* ── Guía de Configuración Android ── */}
+        <div id="pwa-guide-section" className="mt-4 border-t border-border/50 pt-4 space-y-3">
+          <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+            <span className="text-base">⚙️</span> Guía de Configuración en Android (Recomendado para Cocina)
+          </h4>
+          <p className="text-[11px] text-muted-foreground leading-normal">
+            Para garantizar que los avisos suenen fuerte y el dispositivo no silencie la aplicación cuando la pantalla esté apagada, sigue estos sencillos pasos:
+          </p>
+          <div className="bg-slate-950/60 dark:bg-slate-950/90 rounded-xl p-4 border border-white/5 space-y-2.5 text-[11px] leading-relaxed text-slate-300 font-medium">
+            <div className="flex gap-2.5">
+              <span className="font-bold text-primary shrink-0 bg-primary/10 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">1</span>
+              <p>
+                <strong>Mantén presionada la App:</strong> En el menú de inicio de tu tablet/móvil, mantén pulsado el icono de la app instalada <strong>De Aquí y De Allá</strong> y toca en el icono de información <strong>(i)</strong> o <em>"Detalles de la app"</em>.
+              </p>
+            </div>
+            <div className="flex gap-2.5">
+              <span className="font-bold text-primary shrink-0 bg-primary/10 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span>
+              <p>
+                <strong>Ajustes de Notificación:</strong> Entra en <strong>Notificaciones</strong>. Asegúrate de que estén <em>"Permitidas"</em> y de activar la opción <em>"Permitir sonido y vibración"</em>.
+              </p>
+            </div>
+            <div className="flex gap-2.5">
+              <span className="font-bold text-primary shrink-0 bg-primary/10 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">3</span>
+              <p>
+                <strong>Categorías de Notificaciones (Importante):</strong> Busca la opción <strong>Categorías de notificación</strong> al final. Toca sobre la categoría principal y asegúrate de establecer la importancia en <strong>Urgente</strong> o <strong>Alta</strong>, y en <strong>Sonido</strong> selecciona un tono largo o fuerte de tu preferencia.
+              </p>
+            </div>
+            <div className="flex gap-2.5">
+              <span className="font-bold text-primary shrink-0 bg-primary/10 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">4</span>
+              <p>
+                <strong>Uso de Batería sin Restricciones:</strong> En los mismos ajustes de la app, ve a <strong>Batería</strong> y selecciona la opción <strong>Sin Restricciones</strong> (o *No optimizar*). Esto evita que Android cierre la conexión de avisos en segundo plano para ahorrar batería.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ── Stats bar ── */}

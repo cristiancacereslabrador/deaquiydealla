@@ -56,6 +56,7 @@ self.addEventListener('push', (event) => {
       tag: data.tag || 'nuevo-pedido',
       renotify: true,
       silent: false,
+      requireInteraction: true,
       sound: '/notification.mp3',
       data: data.data || { url: '/admin' }
     };
@@ -73,6 +74,7 @@ self.addEventListener('push', (event) => {
         badge: '/images/logo.png',
         vibrate: [300, 100, 300, 100, 300, 100, 400],
         silent: false,
+        requireInteraction: true,
         sound: '/notification.mp3',
         data: { url: '/admin' }
       })
