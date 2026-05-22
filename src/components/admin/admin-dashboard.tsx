@@ -390,6 +390,7 @@ export function AdminDashboard() {
   const [printerStatus, setPrinterStatus] = useState<"idle" | "checking" | "online" | "offline">("idle");
   const [isAudioBlocked, setIsAudioBlocked] = useState(false);
   const [registeredUsersCount, setRegisteredUsersCount] = useState<number>(0);
+  const [reconnectTrigger, setReconnectTrigger] = useState<number>(0);
   
   // ─── Debug Console ───
   const [debugLogs, setDebugLogs] = useState<{ time: string, msg: string, type: "error" | "info" }[]>([]);
@@ -398,17 +399,54 @@ export function AdminDashboard() {
   }, []);
 
 
-  // Función para reproducir sonido con reintento si está bloqueado
+  // Sintetizador acústico agradable (ding-dong digital) para notificaciones infalibles sin red
+  const playSynthesizedChime = useCallback(() => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      gain1.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(659.25, ctx.currentTime + 0.15); // E5
+      gain2.gain.setValueAtTime(0, ctx.currentTime);
+      gain2.gain.setValueAtTime(0.2, ctx.currentTime + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.95);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      
+      osc1.start(ctx.currentTime);
+      osc1.stop(ctx.currentTime + 0.8);
+      osc2.start(ctx.currentTime + 0.15);
+      osc2.stop(ctx.currentTime + 0.95);
+    } catch (err) {
+      console.warn("Synthesized chime failed:", err);
+    }
+  }, []);
+
+  // Función para reproducir sonido con reintento si está bloqueado y sintetizador de respaldo
   const playNotificationSound = useCallback(async () => {
     try {
       const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
       await audio.play();
       setIsAudioBlocked(false);
     } catch (err) {
-      console.warn("Audio blocked by browser. Interaction required.");
+      console.warn("Audio MP3 blocked or failed. Fallback to synthesized chime.");
+      playSynthesizedChime();
       setIsAudioBlocked(true);
     }
-  }, []);
+  }, [playSynthesizedChime]);
+
 
   // Cargar configuración de impresora y gestionar auto-conexión
   useEffect(() => {
@@ -496,8 +534,8 @@ export function AdminDashboard() {
     }
   }, []);
 
-  /* ── Initial data load ── */
-  useEffect(() => {
+  /* ── Sincronizador de datos robusto ── */
+  const loadDashboardData = useCallback(() => {
     Promise.all([
       supabase.from("pedidos").select("*").order("created_at", { ascending: true }).limit(100),
       supabase.from("store_settings").select("id, value").in("id", ["store_status", "weekly_schedule"]),
@@ -547,16 +585,30 @@ export function AdminDashboard() {
         setOutOfStock(map);
       }
       setLoading(false);
+    }).catch(err => {
+      addLog(`Error al cargar datos: ${err.message}`, "error");
+      LoggerService.error("AdminDashboard:loadDashboardData", err);
     });
+  }, [supabase, addLog]);
 
-    /* ── Realtime subscriptions ── */
+  // Carga inicial de datos al montar el componente
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  /* ── Suscripción Realtime blindada ante reinicios cosméticos ── */
+  useEffect(() => {
     const channel = supabase.channel("admin_kanban")
       .on("postgres_changes", { event: "*", schema: "public", table: "pedidos" }, (payload) => {
         if (payload.eventType === "INSERT") {
           const newOrder = payload.new as Order;
           console.log("REALTIME INSERT:", newOrder);
-          setOrders(prev => [...prev, newOrder]);
-          addLog(`Pedido #${newOrder.id.slice(0,8)} detectado.`);
+          setOrders(prev => {
+            // Evitar duplicados por si acaso
+            if (prev.some(o => o.id === newOrder.id)) return prev;
+            return [...prev, newOrder];
+          });
+          addLog(`Nuevo pedido #${newOrder.id.slice(0,8)} detectado en tiempo real.`);
           
           playNotificationSound();
         } else if (payload.eventType === "UPDATE") {
@@ -581,8 +633,32 @@ export function AdminDashboard() {
         addLog(`Canal Pedidos: ${status.toUpperCase()}`, status === "SUBSCRIBED" ? "info" : "error");
       });
 
-    return () => { supabase.removeChannel(channel); };
-  }, [supabase, isDirectPrintEnabled, printerIp, playNotificationSound, addLog]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, playNotificationSound, addLog, reconnectTrigger]);
+
+  // Escuchar eventos de visibilidad y conexión a internet para tablets/móviles (evita suspensiones de socket)
+  useEffect(() => {
+    const handleVisibilityOrNetworkChange = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) {
+        addLog("Tablet desbloqueada/reconectada. Sincronizando pedidos...");
+        loadDashboardData();
+        // Disparar reconexión del canal de Supabase
+        setReconnectTrigger(prev => prev + 1);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityOrNetworkChange);
+    window.addEventListener("online", handleVisibilityOrNetworkChange);
+    window.addEventListener("focus", handleVisibilityOrNetworkChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityOrNetworkChange);
+      window.removeEventListener("online", handleVisibilityOrNetworkChange);
+      window.removeEventListener("focus", handleVisibilityOrNetworkChange);
+    };
+  }, [loadDashboardData, addLog]);
 
   /* ── Advance order status ── */
   const advanceOrder = useCallback(async (order: Order, minutes?: number) => {
