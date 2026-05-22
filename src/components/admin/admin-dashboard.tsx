@@ -458,6 +458,42 @@ export function AdminDashboard() {
     setIsDirectPrintEnabled(true);
   }, []);
 
+  // Prevenir que la pantalla de la tablet de cocina entre en suspensión por inactividad (Wake Lock API)
+  useEffect(() => {
+    let wakeLock: any = null;
+    
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await (navigator as any).wakeLock.request('screen');
+          addLog("Bloqueo de suspensión de pantalla (Wake Lock) ACTIVO.", "info");
+        }
+      } catch (err: any) {
+        console.warn(`Wake Lock no soportado o bloqueado por el navegador: ${err.message}`);
+      }
+    }
+
+    requestWakeLock();
+
+    // Volver a solicitar el bloqueo de pantalla activa si el usuario minimiza y regresa
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      if (wakeLock) {
+        wakeLock.release().then(() => {
+          wakeLock = null;
+        }).catch(() => {});
+      }
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [addLog]);
+
   // Se ha cambiado la URL de verificación a la raíz de la impresora (interfaz web).
   // Esto evita enviar peticiones incompletas al servicio ePOS que causaban que la impresora expulsara papel.
   const checkPrinterConnection = useCallback(async (ip: string) => {
