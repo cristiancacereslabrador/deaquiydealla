@@ -535,6 +535,21 @@ export function AdminDashboard() {
     setIsDirectPrintEnabled(true);
   }, []);
 
+  // Helper to wrap a promise with a timeout to prevent infinite freezes
+  const withTimeout = useCallback(async <T,>(promise: Promise<T>, ms: number, errorMsg: string): Promise<T> => {
+    let timeoutId: any;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(errorMsg));
+      }, ms);
+    });
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }, []);
+
   // Helper to get SW registration safely with a 5-second timeout to prevent infinite hangs
   const getSWRegistration = useCallback(async (): Promise<ServiceWorkerRegistration> => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
@@ -639,7 +654,11 @@ export function AdminDashboard() {
               // Asegurar que esté activo antes de verificar suscripción
               const activeReg = await ensureActiveSW(registration);
               
-              const subscription = await activeReg.pushManager.getSubscription();
+              const subscription = await withTimeout(
+                activeReg.pushManager.getSubscription(),
+                5000,
+                "Límite de tiempo agotado al verificar suscripción push local."
+              );
               setIsPushSubscribed(!!subscription);
 
               // AUTO-ACTIVACIÓN INTELIGENTE: Si el usuario ya dio permisos de notificación previamente en este dispositivo
@@ -647,10 +666,14 @@ export function AdminDashboard() {
               if (!subscription && Notification.permission === "granted") {
                 if (vapidPublicKey) {
                   const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
-                  const newSub = await activeReg.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: convertedKey as any,
-                  });
+                  const newSub = await withTimeout(
+                    activeReg.pushManager.subscribe({
+                      userVisibleOnly: true,
+                      applicationServerKey: convertedKey as any,
+                    }),
+                    8000,
+                    "Tiempo de espera agotado al conectar con los servidores Push de Google."
+                  );
                   
                   await fetch("/api/admin/push/subscribe", {
                     method: "POST",
@@ -700,8 +723,12 @@ export function AdminDashboard() {
 
       if (isPushSubscribed) {
         addLog("Cancelando suscripción de avisos...", "info");
-        // Desuscribirse
-        const subscription = await activeReg.pushManager.getSubscription();
+        // Desuscribirse con timeout de 6 segundos
+        const subscription = await withTimeout(
+          activeReg.pushManager.getSubscription(),
+          6000,
+          "Límite de tiempo agotado al verificar suscripción push."
+        );
         if (subscription) {
           await subscription.unsubscribe();
           
@@ -750,10 +777,15 @@ export function AdminDashboard() {
 
         addLog("Generando canal seguro Web Push...", "info");
         const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
-        const subscription = await activeReg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: convertedKey as any,
-        });
+        // Suscribirse con timeout de 10 segundos
+        const subscription = await withTimeout(
+          activeReg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedKey as any,
+          }),
+          10000,
+          "Tiempo de espera agotado al conectar con los servidores Push de Google (10s). Revisa tu conexión a internet o los Google Play Services."
+        );
 
         addLog("Guardando suscripción en la base de datos (Supabase)...", "info");
         // Registrar en el backend
