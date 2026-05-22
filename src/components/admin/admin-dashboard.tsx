@@ -499,21 +499,64 @@ export function AdminDashboard() {
     setIsDirectPrintEnabled(true);
   }, []);
 
+  // Helper to get SW registration safely with a 5-second timeout to prevent infinite hangs
+  const getSWRegistration = useCallback(async (): Promise<ServiceWorkerRegistration> => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+      throw new Error("Service Worker no es compatible con tu navegador.");
+    }
+
+    // 1. Intentar obtener registro existente
+    let reg = await navigator.serviceWorker.getRegistration();
+    if (reg && reg.active) {
+      return reg;
+    }
+
+    // 2. Si no hay registro o no está activo, intentar registrar activamente
+    try {
+      reg = await navigator.serviceWorker.register("/sw.js");
+    } catch (err: any) {
+      console.warn("Fallo al registrar SW de forma activa:", err);
+    }
+
+    // 3. Esperar que esté listo con timeout de 5 segundos
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        if (reg) {
+          resolve(reg);
+        } else {
+          reject(new Error("Tiempo de espera agotado conectando con el Service Worker (5s)."));
+        }
+      }, 5000);
+
+      navigator.serviceWorker.ready
+        .then((readyReg) => {
+          clearTimeout(timeout);
+          resolve(readyReg);
+        })
+        .catch((err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
+    });
+  }, []);
+
   // Verificar si Web Push es compatible y si el usuario ya está suscrito
   useEffect(() => {
     if (typeof window !== "undefined") {
       const hasSW = "serviceWorker" in navigator;
       const hasPM = "PushManager" in window;
       const isSecure = window.isSecureContext;
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
-      addLog(`Diagnóstico Push: ServiceWorker=${hasSW ? "SÍ" : "NO"}, PushManager=${hasPM ? "SÍ" : "NO"}, SSL Seguro=${isSecure ? "SÍ" : "NO"}`, "info");
+      addLog(`Diagnóstico Push: ServiceWorker=${hasSW ? "SÍ" : "NO"}, PushManager=${hasPM ? "SÍ" : "NO"}, SSL Seguro=${isSecure ? "SÍ" : "NO"}, VAPID Key=${vapidPublicKey ? "CONFIGURADA" : "FALTA"}`, "info");
 
       if (hasSW && hasPM) {
         setIsPushSupported(true);
         if ("Notification" in window) {
           setNotificationPermission(Notification.permission as any);
         }
-        navigator.serviceWorker.ready
+        
+        getSWRegistration()
           .then(async (registration) => {
             try {
               const subscription = await registration.pushManager.getSubscription();
@@ -522,7 +565,6 @@ export function AdminDashboard() {
               // AUTO-ACTIVACIÓN INTELIGENTE: Si el usuario ya dio permisos de notificación previamente en este dispositivo
               // pero por alguna razón no está suscrito localmente, realizamos la suscripción de forma automática y silenciosa
               if (!subscription && Notification.permission === "granted") {
-                const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
                 if (vapidPublicKey) {
                   const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
                   const newSub = await registration.pushManager.subscribe({
@@ -553,24 +595,28 @@ export function AdminDashboard() {
           })
           .catch((err) => {
             console.error("Service worker ready failed:", err);
-            addLog(`Fallo al esperar Service Worker: ${err}`, "error");
+            addLog(`Fallo al esperar Service Worker: ${err.message || err}`, "error");
           });
       } else {
         setIsPushSupported(false);
         addLog("Notificaciones Web Push desactivadas por el navegador debido a falta de HTTPS/SSL, Modo Incógnito o navegador obsoleto.", "error");
       }
     }
-  }, [addLog]);
+  }, [addLog, getSWRegistration]);
 
   // Manejar activación / desactivación de notificaciones push en segundo plano
   const handleTogglePush = async () => {
     if (!isPushSupported || isPushLoading) return;
     setIsPushLoading(true);
+    addLog("Configurando avisos en segundo plano...", "info");
 
     try {
-      const registration = await navigator.serviceWorker.ready;
+      addLog("Esperando conexión con el Service Worker...", "info");
+      const registration = await getSWRegistration();
+      addLog("Service Worker conectado. Verificando estado...", "info");
 
       if (isPushSubscribed) {
+        addLog("Cancelando suscripción de avisos...", "info");
         // Desuscribirse
         const subscription = await registration.pushManager.getSubscription();
         if (subscription) {
@@ -599,8 +645,10 @@ export function AdminDashboard() {
           addLog("Avisos en segundo plano DESACTIVADOS.", "info");
         }
       } else {
+        addLog("Solicitando permisos de notificación al navegador...", "info");
         // Solicitar permisos de notificación nativa
         const permission = await Notification.requestPermission();
+        addLog(`Permiso de notificación respondido: ${permission}`, "info");
         if (typeof window !== "undefined" && "Notification" in window) {
           setNotificationPermission(Notification.permission as any);
         }
@@ -612,17 +660,19 @@ export function AdminDashboard() {
 
         const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
         if (!vapidPublicKey) {
-          addLog("Error: NEXT_PUBLIC_VAPID_PUBLIC_KEY no configurada.", "error");
+          addLog("Error: NEXT_PUBLIC_VAPID_PUBLIC_KEY no está configurada en Vercel.", "error");
           setIsPushLoading(false);
           return;
         }
 
+        addLog("Generando canal seguro Web Push...", "info");
         const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
         const subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: convertedKey as any,
         });
 
+        addLog("Guardando suscripción en la base de datos (Supabase)...", "info");
         // Registrar en el backend
         const response = await fetch("/api/admin/push/subscribe", {
           method: "POST",
