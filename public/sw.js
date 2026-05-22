@@ -3,7 +3,7 @@
  * Satisfies PWA installability requirements.
  */
 
-const CACHE_NAME = 'deaquiydealla-v3';
+const CACHE_NAME = 'deaquiydealla-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/images/logo.png',
@@ -107,7 +107,8 @@ self.addEventListener('push', (event) => {
       body: data.body,
       icon: data.icon || '/images/logo.png',
       badge: data.badge || '/images/logo.png',
-      vibrate: data.vibrate || [300, 100, 300, 100, 300, 100, 400],
+      // Vibración masiva: 5 ráfagas de 1 segundo para llamar la atención en la cocina
+      vibrate: [1000, 250, 1000, 250, 1000, 250, 1000, 250, 1000],
       tag: data.tag || 'nuevo-pedido',
       renotify: true,
       silent: false,
@@ -127,7 +128,7 @@ self.addEventListener('push', (event) => {
         body: text,
         icon: '/images/logo.png',
         badge: '/images/logo.png',
-        vibrate: [300, 100, 300, 100, 300, 100, 400],
+        vibrate: [1000, 250, 1000, 250, 1000, 250, 1000, 250, 1000],
         silent: false,
         requireInteraction: true,
         sound: '/notification.mp3',
