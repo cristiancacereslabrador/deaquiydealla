@@ -99,7 +99,12 @@ export async function sendNewOrderNotification(order: PushOrderData): Promise<vo
     const sendPromises = subscriptions.map(async (subRow) => {
       try {
         const sub = subRow.subscription as unknown as webpush.PushSubscription;
-        await webpush.sendNotification(sub, payload);
+        await webpush.sendNotification(sub, payload, {
+          headers: {
+            "Urgency": "high"
+          },
+          TTL: 3600 // 1 hora
+        });
       } catch (err: any) {
         // Si el endpoint de Google/Apple responde 410 (Gone) o 404 (Not Found), significa que la suscripción ha expirado o el usuario desinstaló la app.
         // En ese caso, la eliminamos de la base de datos automáticamente para mantener el servidor limpio.
