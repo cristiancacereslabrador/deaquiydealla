@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * @description Tarjeta de fidelización para el usuario.
- * Muestra el progreso hacia el 7º pedido gratis.
+ * Muestra el progreso hacia el premio de fidelidad.
  */
 export function LoyaltyCard() {
   const [count, setCount] = useState<number | null>(null);
@@ -82,7 +82,7 @@ export function LoyaltyCard() {
         {isReady && (
           <div className="bg-green-500/30 border border-green-400/50 rounded-xl p-3 flex items-center gap-3 animate-pulse">
             <Gift className="w-6 h-6" />
-            <p className="text-sm font-bold">¡ENHORABUENA! Tu próximo pedido es gratis. Avisa al local al recogerlo.</p>
+            <p className="text-sm font-bold">¡ENHORABUENA! Tienes 1 bebida + papas GRATIS en tu próximo pedido (desde 12,99 €). Avisa al local al recogerlo.</p>
           </div>
         )}
       </div>
